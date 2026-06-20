@@ -43,6 +43,19 @@
 
     <!-- ===================== APP-VIEW ===================== -->
     <section id="app-view" class="view app" hidden>
+
+      <!-- Chat: spørg modellen -->
+      <section class="panel chat" aria-label="Spørg modellen">
+        <h2 class="panel__titel">Spørg modellen</h2>
+        <div id="chat-log" class="chat__log" aria-live="polite"></div>
+        <form id="chat-form" class="chat__form" autocomplete="off">
+          <textarea id="chat-input" class="chat__input" rows="2"
+                    placeholder="Stil et spørgsmål om dispatchmodellen eller Billund-casen — fx værdien af balancemarkedet eller tanken."></textarea>
+          <button id="chat-send" class="knap knap--primaer" type="submit">Send</button>
+        </form>
+        <p class="chat__hint">Modellen svarer kun om dispatchmodellen og Billund-casen. Balance-tal er under validering (modelfejl) — se forbeholdene i svaret.</p>
+      </section>
+
       <div class="app__grid">
 
         <!-- Scenarie-menu -->

@@ -5,8 +5,10 @@
  * gyldig (cookien er HttpOnly og kan ikke læses fra JS) → app-view. Et 401
  * (AuthFejl) → login-view.
  *
- * Omfang i increment 1: stillads + login-gate + scenarie-menu +
- * manifest-detalje som tekst/tabel. INGEN figurer, INGEN chat.
+ * Increment 1: stillads + login-gate + scenarie-menu + manifest-detalje.
+ * Increment 2: figurer (i figurer.js), kaldt fra detaljepanelet.
+ * Increment 3: chat mod /api/chat — sender hele tekst-historikken, viser svar,
+ *   og klikbare scenarie-referencer der åbner samme detaljepanel (vaelgScenarie).
  */
 (function () {
   "use strict";
@@ -23,8 +25,22 @@
   var elListe     = document.getElementById("scenarie-liste");
   var elDetalje   = document.getElementById("detalje");
   var elDetaljeTom= document.getElementById("detalje-tom");
+  var elChatLog   = document.getElementById("chat-log");
+  var elChatForm  = document.getElementById("chat-form");
+  var elChatInput = document.getElementById("chat-input");
+  var elChatSend  = document.getElementById("chat-send");
 
   var valgtId = null;
+
+  // Katalog-indeks: scenarie_id → {titel, variant_label}. Bygges når menuen
+  // hentes; bruges af chat-referencerne, fordi chat-manifesterne IKKE selv
+  // bærer variant_label (det beregnes kun i kataloget/list_scenarier).
+  var katalogIndex = {};
+
+  // Chat-historik: KUN {role, content}-tekst. Hele listen sendes hver tur;
+  // manifester foldes aldrig ind i historik-indholdet (backend styrer værktøjer).
+  var chatHistorik = [];
+  var MAX_BESKED_TEGN = 2000;   // spejler backendens input-værn
 
   // --- Talformatering (da-DK) ---------------------------------------------
   var nfHel  = new Intl.NumberFormat("da-DK", { maximumFractionDigits: 0 });
@@ -116,11 +132,16 @@
   }
 
   // --- Detaljepanel --------------------------------------------------------
-  function vaelgScenarie(id) {
+  // ÉN render-vej for detaljepanelet — både menu-valg og chat-reference kalder
+  // denne. scrollTil=true bringer panelet i fokus (bruges fra chat-referencen).
+  function vaelgScenarie(id, scrollTil) {
     valgtId = id;
     markerAktiv(id);
     elDetaljeTom.hidden = true;
     elDetalje.hidden = false;
+    if (scrollTil && elDetalje.scrollIntoView) {
+      elDetalje.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
     elDetalje.innerHTML = '<div class="tom-besked">Henter …</div>';
 
     // inkluder_serier=true: timeserierne skal med, så figurerne kan tegnes.
@@ -257,9 +278,126 @@
   function hentKatalogOgVis() {
     return API.scenarier().then(function (scenarier) {
       visApp();
+      // Frisk app-visning → nulstil chat (fx efter gen-login).
+      chatHistorik = [];
+      if (elChatLog) elChatLog.innerHTML = "";
+      katalogIndex = {};
+      scenarier.forEach(function (s) {
+        katalogIndex[s.scenarie_id] = { titel: s.titel, variant_label: s.variant_label };
+      });
       tegnMenu(scenarier);
     });
   }
+
+  // --- Chat ----------------------------------------------------------------
+  function boble(klasse, tekst) {
+    var d = document.createElement("div");
+    d.className = "boble " + klasse;
+    d.textContent = tekst;               // textContent: ingen HTML-injektion
+    elChatLog.appendChild(d);
+    elChatLog.scrollTop = elChatLog.scrollHeight;
+    return d;
+  }
+
+  // Klikbare referencer under et assistent-svar. Titel + variant_label slås op
+  // i kataloget (chat-manifestet bærer dem ikke); klik åbner detaljepanelet.
+  function visReferencer(manifester) {
+    var set = {}, unikke = [];
+    manifester.forEach(function (m) {
+      var id = m && m.scenarie_id;
+      if (!id || set[id]) return;
+      set[id] = true; unikke.push(id);
+    });
+    if (!unikke.length) return;
+
+    var wrap = document.createElement("div");
+    wrap.className = "chat__ref";
+    var h = document.createElement("div");
+    h.className = "chat__ref-titel";
+    h.textContent = unikke.length > 1 ? "Åbn scenarier" : "Åbn scenarie";
+    wrap.appendChild(h);
+
+    unikke.forEach(function (id) {
+      var kat = katalogIndex[id] || {};
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "ref-knap";
+      var t = document.createElement("span");
+      t.className = "ref-knap__titel";
+      t.textContent = kat.titel || id;
+      b.appendChild(t);
+      if (kat.variant_label) {
+        var v = document.createElement("span");
+        v.className = "ref-knap__variant";
+        v.textContent = kat.variant_label;
+        b.appendChild(v);
+      }
+      var a = document.createElement("span");
+      a.className = "ref-knap__aabn";
+      a.textContent = "Vis nøgletal + figurer →";
+      b.appendChild(a);
+      b.addEventListener("click", function () { vaelgScenarie(id, true); });
+      wrap.appendChild(b);
+    });
+    elChatLog.appendChild(wrap);
+    elChatLog.scrollTop = elChatLog.scrollHeight;
+  }
+
+  function chatLaast(laast) {
+    elChatSend.disabled = laast;
+    elChatInput.disabled = laast;
+  }
+
+  function sendChat() {
+    var tekst = elChatInput.value.trim();
+    if (!tekst) return;
+    if (tekst.length > MAX_BESKED_TEGN) {
+      boble("boble--fejl", "Beskeden er for lang (maks. " + MAX_BESKED_TEGN +
+        " tegn). Forkort den og prøv igen.");
+      return;
+    }
+
+    boble("boble--bruger", tekst);
+    chatHistorik.push({ role: "user", content: tekst });
+    elChatInput.value = "";
+    chatLaast(true);
+    var pending = boble("boble--pending", "Modellen tænker …");
+
+    API.chat(chatHistorik).then(function (res) {
+      pending.remove();
+      var svar = res.svar || "(tomt svar)";
+      boble("boble--assistent", svar);
+      chatHistorik.push({ role: "assistant", content: svar });
+      visReferencer(res.manifester || []);
+      chatLaast(false);
+      elChatInput.focus();
+    }).catch(function (fejl) {
+      pending.remove();
+      if (fejl instanceof API.AuthFejl) {
+        // Udløbet session → samme mønster som resten af appen.
+        visLogin();
+        loginFejl("Din session er udløbet. Log ind igen.");
+        return;
+      }
+      // Rate limit / serverfejl / input-værn → rolig besked; chatten lever videre.
+      // Den sidste bruger-tur bliver i historikken, så "prøv igen" giver mening.
+      boble("boble--fejl", fejl.message || "Noget gik galt. Prøv igen om lidt.");
+      chatLaast(false);
+      elChatInput.focus();
+    });
+  }
+
+  elChatForm.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    sendChat();
+  });
+  // Enter sender; Shift+Enter giver linjeskift.
+  elChatInput.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter" && !ev.shiftKey) {
+      ev.preventDefault();
+      sendChat();
+    }
+  });
 
   // --- Login-flow ----------------------------------------------------------
   elLoginForm.addEventListener("submit", function (ev) {

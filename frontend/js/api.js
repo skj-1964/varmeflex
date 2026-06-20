@@ -101,6 +101,16 @@
     sundhed: function () {
       return hent("/sundhed");
     },
+
+    /** Chat-runde: send HELE beskedhistorikken (kun {role, content}-tekst) og
+     * få {svar, manifester} retur. Kræver session (401/403 → AuthFejl).
+     * Rate limit (429), input-værn (413) og serverfejl kommer som ApiFejl med
+     * serverens danske detalje — håndteres af UI'et som en rolig besked. */
+    chat: function (beskeder) {
+      return postJson("/chat", { beskeder: beskeder }).then(function (d) {
+        return { svar: d.svar || "", manifester: d.manifester || [] };
+      });
+    },
   };
 
   global.VarmeflexAPI = API;
