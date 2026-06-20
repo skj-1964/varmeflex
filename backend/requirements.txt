@@ -1,0 +1,5 @@
+# Backend for varmeflex.dk (fase 1)
+fastapi
+uvicorn[standard]   # ASGI-server, der kører app.py i drift
+anthropic           # kun nødvendig for /api/chat (det live model-kald)
+# httpx            # kun til test (TestClient)

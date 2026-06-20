@@ -1,0 +1,11 @@
+# Python-miljø og bytecode (miljøspecifikt — genskabes fra requirements.txt)
+backend/venv/
+__pycache__/
+*.pyc
+
+# Hemmeligheder må ALDRIG i git (lever i /etc/varmeflex uden for repoet)
+*.env
+.env
+
+# OS-støj
+.DS_Store

@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "scenarie_id": "billund_2025__gh__2025",
+  "meta": {
+    "case_name": "billund_2025",
+    "titel": "TESTFIKSTUR A — ikke rigtige tal",
+    "beskrivelse": "Med tank, uden balancemarked. Strukturel test, ingen gyldige tal.",
+    "gruppe": "billund_2025",
+    "rolle_i_gruppe": null
+  },
+  "koersel": {
+    "datakilde": "github",
+    "periode": {
+      "start": "2025-01-01",
+      "slut": "2025-12-31",
+      "oploesning": "1h"
+    },
+    "med_balancering": false,
+    "enheder_til": [],
+    "enheder_fra": [
+      "overskudsvarme"
+    ],
+    "overrides": [],
+    "foresight_haircut_pct": null
+  },
+  "sporbarhed": {
+    "model_commit": "TESTFIX",
+    "koert_tidspunkt": "2026-06-17T00:00:00Z",
+    "solve_status": "optimal",
+    "model_type": "MILP"
+  },
+  "enheder": [],
+  "filer": {
+    "manifest": "billund_2025__gh__2025_manifest.json",
+    "hourly_csv": "billund_2025__gh__2025_hourly.csv"
+  },
+  "noegletal": {
+    "objektiv_dkk": 0,
+    "varmeefterspoergsel_mwh": 0,
+    "samlet_produktion_mwh": 0,
+    "nettab_mwh": 0,
+    "nettab_pct": 0,
+    "balanceindtaegt_dkk": {
+      "i_alt": 0,
+      "afrr": 0,
+      "mfrr": 0
+    },
+    "tank_arbitrage_dkk": null,
+    "co2_ton": 0
+  }
+}

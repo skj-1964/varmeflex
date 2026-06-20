@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>varmeflex.dk — dispatchmodel for dansk fjernvarme</title>
+  <meta name="description" content="Demonstration af en åben MILP-dispatchmodel for dansk fjernvarme. Pilotcase: Billund Varmeværk.">
+  <link rel="stylesheet" href="vendor/uPlot.min.css">
+  <link rel="stylesheet" href="css/varmeflex.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <div class="brand">
+        <span class="brand__navn">varmeflex<span class="brand__dot">.dk</span></span>
+        <span class="brand__under">MILP-dispatchmodel for dansk fjernvarme · pilotcase Billund</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="indhold">
+
+    <!-- ===================== LOGIN-VIEW ===================== -->
+    <section id="login-view" class="view login" hidden>
+      <div class="kort kort--login">
+        <h1 class="login__titel">Adgang for medlemmer</h1>
+        <p class="login__intro">
+          Siden er forbeholdt fjernvarmeværker og Dansk Fjernvarmes medlemmer.
+          Indtast din medlemskode for at se modellen.
+        </p>
+        <form id="login-form" autocomplete="off">
+          <label class="felt">
+            <span class="felt__navn">Medlemskode</span>
+            <input id="login-kode" class="felt__input" type="password"
+                   name="kode" required autocapitalize="off"
+                   spellcheck="false" autocomplete="off">
+          </label>
+          <p id="login-fejl" class="fejl" role="alert" hidden></p>
+          <button id="login-knap" class="knap knap--primaer" type="submit">Log ind</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===================== APP-VIEW ===================== -->
+    <section id="app-view" class="view app" hidden>
+      <div class="app__grid">
+
+        <!-- Scenarie-menu -->
+        <aside class="panel panel--menu" aria-label="Scenarier">
+          <h2 class="panel__titel">Scenarier</h2>
+          <p class="menu__hjaelp">Vælg en kørsel for at se nøgletal og enheder.</p>
+          <ul id="scenarie-liste" class="menu"></ul>
+        </aside>
+
+        <!-- Detaljepanel -->
+        <section class="panel panel--detalje" aria-live="polite">
+          <div id="detalje-tom" class="tom-besked">
+            Vælg et scenarie i listen til venstre.
+          </div>
+          <div id="detalje" hidden></div>
+        </section>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="bund">
+    <span>varmeflex.dk · differentiel business case (C−A = balancemarked, A−B = tank)</span>
+  </footer>
+
+  <script src="vendor/uPlot.iife.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/figurer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

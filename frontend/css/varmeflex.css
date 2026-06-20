@@ -1,0 +1,373 @@
+/* varmeflex.css — nøgtern, teknisk palet for et tal-tungt analyseværktøj.
+   Lys baggrund, mørk tekst, én afdæmpet accent. Tabulære tal overalt. */
+
+:root {
+  --bg:        #f7f7f5;   /* off-white sidebaggrund */
+  --flade:     #ffffff;   /* kort/paneler */
+  --flade-2:   #fafaf9;   /* svag zebra/sektion */
+  --tekst:     #1c1f23;   /* mørk brødtekst */
+  --tekst-svag:#5b6168;   /* labels, hjælpetekst */
+  --tekst-mat: #868d94;   /* meget dæmpet */
+  --kant:      #e3e3df;   /* tynde borders */
+  --kant-2:    #ededea;
+  --accent:    #2f6f5e;   /* afdæmpet teal-grøn */
+  --accent-svag:#e8f0ed;
+  --fejl:      #9a2c2c;
+  --advarsel-bg:#fbf3e2;
+  --advarsel-kant:#e7cf9a;
+  --advarsel-tekst:#7a5a14;
+
+  --radius: 6px;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+          Arial, "Noto Sans", sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas,
+          "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--tekst);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tal-tungt site: tabulære cifre alle steder, hvor tal optræder. */
+.tal, td, th, .kpi__vaerdi, .felt__input { font-variant-numeric: tabular-nums; }
+
+h1, h2, h3 { font-weight: 600; line-height: 1.25; margin: 0; }
+
+/* ---------------- Topbar ---------------- */
+.topbar {
+  background: var(--flade);
+  border-bottom: 1px solid var(--kant);
+}
+.topbar__inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.brand { display: flex; flex-direction: column; gap: 2px; }
+.brand__navn { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.brand__dot { color: var(--accent); }
+.brand__under { font-size: 12.5px; color: var(--tekst-svag); }
+
+/* ---------------- Layout ---------------- */
+.indhold { max-width: 1180px; margin: 0 auto; padding: 28px 24px 56px; }
+.view { display: block; }
+
+.bund {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 18px 24px 36px;
+  color: var(--tekst-mat);
+  font-size: 12.5px;
+}
+
+/* ---------------- Knapper ---------------- */
+.knap {
+  font: inherit;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: background-color .12s ease, border-color .12s ease;
+}
+.knap--primaer { background: var(--accent); color: #fff; }
+.knap--primaer:hover { background: #285f50; }
+.knap--primaer:disabled { opacity: .55; cursor: default; }
+.knap--diskret {
+  background: transparent;
+  border-color: var(--kant);
+  color: var(--tekst-svag);
+  padding: 6px 12px;
+}
+.knap--diskret:hover { border-color: var(--tekst-mat); color: var(--tekst); }
+
+/* ---------------- Login ---------------- */
+.login { display: flex; justify-content: center; padding-top: 32px; }
+.kort {
+  background: var(--flade);
+  border: 1px solid var(--kant);
+  border-radius: var(--radius);
+}
+.kort--login { width: 100%; max-width: 420px; padding: 28px 28px 30px; }
+.login__titel { font-size: 19px; margin-bottom: 8px; }
+.login__intro { color: var(--tekst-svag); font-size: 14px; margin: 0 0 20px; }
+
+.felt { display: block; margin-bottom: 16px; }
+.felt__navn {
+  display: block;
+  font-size: 12.5px;
+  color: var(--tekst-svag);
+  margin-bottom: 6px;
+}
+.felt__input {
+  width: 100%;
+  font: inherit;
+  padding: 9px 11px;
+  border: 1px solid var(--kant);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--tekst);
+}
+.felt__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-svag);
+}
+
+.fejl {
+  color: var(--fejl);
+  font-size: 13.5px;
+  margin: 0 0 14px;
+  padding: 9px 11px;
+  background: #fbecec;
+  border: 1px solid #e7c4c4;
+  border-radius: var(--radius);
+}
+.login__titel + .login__intro { margin-top: 0; }
+.login form .knap--primaer { width: 100%; }
+
+/* ---------------- App-grid ---------------- */
+.app__grid {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+.panel {
+  background: var(--flade);
+  border: 1px solid var(--kant);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.panel__titel {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--tekst-svag);
+  margin-bottom: 12px;
+}
+
+/* ---------------- Scenarie-menu ---------------- */
+.menu__hjaelp { font-size: 13px; color: var(--tekst-svag); margin: 0 0 14px; }
+.menu { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.menu__knap {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  background: var(--flade-2);
+  border: 1px solid var(--kant);
+  border-radius: var(--radius);
+  padding: 11px 12px;
+  transition: border-color .12s ease, background-color .12s ease;
+}
+.menu__knap:hover { border-color: var(--accent); }
+.menu__knap[aria-current="true"] {
+  border-color: var(--accent);
+  background: var(--accent-svag);
+}
+.menu__titel { display: block; font-weight: 600; font-size: 14px; }
+.menu__variant {
+  display: block;
+  font-size: 12.5px;
+  color: var(--tekst-svag);
+  margin-top: 3px;
+}
+
+/* ---------------- Detaljepanel ---------------- */
+.tom-besked { color: var(--tekst-mat); font-size: 14px; padding: 8px 0; }
+
+.detalje__hoved { margin-bottom: 22px; }
+.detalje__titel { font-size: 20px; margin-bottom: 6px; }
+.detalje__beskrivelse { color: var(--tekst-svag); font-size: 14px; white-space: pre-line; }
+
+.sektion { margin-top: 26px; }
+.sektion__titel {
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--tekst-svag);
+  border-bottom: 1px solid var(--kant-2);
+  padding-bottom: 6px;
+  margin-bottom: 14px;
+}
+
+/* Meta/koersel/sporbarhed som definition-grid */
+.dl {
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) 1fr;
+  gap: 8px 18px;
+  margin: 0;
+}
+.dl dt { color: var(--tekst-svag); font-size: 13.5px; }
+.dl dd { margin: 0; font-size: 14px; }
+.kode { font-family: var(--mono); font-size: 13px; }
+.merker { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.merke {
+  font-size: 12px;
+  background: var(--flade-2);
+  border: 1px solid var(--kant);
+  border-radius: 4px;
+  padding: 2px 7px;
+  color: var(--tekst-svag);
+}
+
+/* KPI-kort */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+.kpi {
+  border: 1px solid var(--kant);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--flade-2);
+}
+.kpi__navn { font-size: 12px; color: var(--tekst-svag); margin-bottom: 6px; }
+.kpi__vaerdi { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.kpi__enhed { font-size: 12.5px; color: var(--tekst-svag); font-weight: 400; margin-left: 3px; }
+.kpi__bi { font-size: 12px; color: var(--tekst-svag); margin-top: 5px; }
+.kpi--bred { grid-column: span 2; }
+.kpi--mat .kpi__vaerdi { color: var(--tekst-mat); font-weight: 500; }
+
+/* Badge: balance-tal under validering */
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--advarsel-tekst);
+  background: var(--advarsel-bg);
+  border: 1px solid var(--advarsel-kant);
+  border-radius: 4px;
+  padding: 1px 7px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.tekst-svag { color: var(--tekst-svag); }
+.kpi--validering { border-color: var(--advarsel-kant); background: var(--advarsel-bg); }
+
+/* Enheder-tabel */
+.tabel-rul { overflow-x: auto; }
+.tabel {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.tabel th, .tabel td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--kant-2);
+  text-align: right;
+  white-space: nowrap;
+}
+.tabel th {
+  color: var(--tekst-svag);
+  font-weight: 600;
+  font-size: 12px;
+  border-bottom: 1px solid var(--kant);
+}
+.tabel th:first-child, .tabel td:first-child { text-align: left; }
+.tabel tbody tr:hover { background: var(--flade-2); }
+.tabel td.navn { font-weight: 500; }
+
+.tom-rk { color: var(--tekst-mat); font-style: italic; }
+
+/* ---------------- Figurer (uPlot) ---------------- */
+.fig-periode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 4px 0 16px;
+  padding: 10px 12px;
+  background: var(--flade-2);
+  border: 1px solid var(--kant);
+  border-radius: var(--radius);
+}
+.fig-periode__navn {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--tekst-svag);
+}
+.fig-periode__felt {
+  font-size: 13px;
+  color: var(--tekst-svag);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fig-periode__felt input {
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 7px;
+  border: 1px solid var(--kant);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--tekst);
+}
+.fig-periode__felt input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-svag);
+}
+.fig-presets { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.fig-preset {
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  background: var(--flade);
+  border: 1px solid var(--kant);
+  border-radius: 4px;
+  padding: 4px 10px;
+  color: var(--tekst-svag);
+  transition: border-color .12s ease, color .12s ease;
+}
+.fig-preset:hover { border-color: var(--accent); color: var(--tekst); }
+
+.fig { margin: 8px 0 22px; }
+.fig:last-child { margin-bottom: 4px; }
+.fig-tom {
+  color: var(--tekst-mat);
+  font-size: 13.5px;
+  font-style: italic;
+  padding: 14px;
+  border: 1px dashed var(--kant);
+  border-radius: var(--radius);
+  background: var(--flade-2);
+}
+
+/* uPlot-temaet ind under sidens nøgterne udtryk */
+.fig .uplot,
+.fig .u-legend { font-family: var(--sans); }
+.fig .u-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tekst);
+  margin-bottom: 6px;
+}
+.fig .u-legend { font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--tekst-svag); }
+.fig .u-legend .u-value { font-variant-numeric: tabular-nums; color: var(--tekst); }
+.fig .u-axis { font-variant-numeric: tabular-nums; }
+
+/* ---------------- Responsivt ---------------- */
+@media (max-width: 820px) {
+  .app__grid { grid-template-columns: 1fr; }
+  .kpi--bred { grid-column: span 1; }
+}
