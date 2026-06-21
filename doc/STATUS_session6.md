@@ -6,7 +6,9 @@
 > Leverancer denne session: **increment 4** (sammenligning reference vs
 > alternativ) bygget, testet og browser-verificeret; git-remote sat op og pushet;
 > **increment 4.1** (fortegns-vending + balance-forbehold i grounding) bygget,
-> testet og chat-verificeret live. Intet fra increment 1–3 rørt.
+> testet og chat-verificeret live; **increment 4.2** (fire små UX/robustheds-
+> rettelser: badge-escaping, Kopiér chat, rolle-scoped længdespærre, Ryd chat)
+> bygget, testet og bruger-bekræftet live. Intet fra increment 1–3 rørt.
 
 ## Hvor vi er
 Sammenligningen er live og fuldt afklaret. Brugeren vælger to vilkårlige kørsler
@@ -64,6 +66,27 @@ balance-modelfejlen (model-bane), plus et lille nyt haircut-scope-spørgsmål.
   omkostnings-Δ som sekundær linje; badge på C-par uændret. Enkelt-visningen urørt.
 - **`css/varmeflex.css`:** sammenlignings-styling i samme palet.
 
+## Increment 4.2 — små UX/robusthedsrettelser (as-built)
+Fire rettelser, alle additive, ingen run_scenario-/to-fase-berøring.
+- **Badge-escaping (frontend):** `kpi()` kørte `esc(navn)`, så en badge proppet
+  ind i navn-strengen blev escapet og vist som rå `<span>`-tekst. Fix: separat
+  betroet `badge`-parameter til `kpi()` (hårdkodede konstanter, ingen
+  manifest-/brugerdata), indsat rå efter labelen. Ramte tre steder:
+  detalje-balanceindtægt, sammenlignings-overskrift, Δ-balanceindtægt. Ingen
+  CSS-ændring.
+- **Kopiér chat (frontend):** knap der serialiserer tekst-historikken
+  (`{role,content}`) til udklipsholderen via `navigator.clipboard` (HTTPS +
+  brugerklik). Kun Q&A-tekst; scenarie-chips ligger uden for historikken og
+  kommer ikke med. Tom historik = no-op.
+- **Rolle-scoped længdespærre (backend):** længdespærren tjekkede HELE historikken
+  mod `MAX_BESKED_TEGN` (2000); et langt assistent-svar (bundet af
+  `max_tokens=1500`) fældte spærren ved gensendt historik. Nu: user-ture mod
+  `MAX_BESKED_TEGN`, assistent-ture mod nyt env-tunbart `MAX_SVAR_TEGN` (default
+  8000, `VARMEFLEX_MAX_SVAR_TEGN`). Frontendens 2000-loft på brugerinput uændret.
+- **Ryd chat (frontend):** knap der tømmer `chatHistorik` + chat-log-DOM, rydder
+  input og låser op (`chatLaast(false)`). Kant: klik mens et kald er undervejs →
+  det svar lægger sig i den nu tomme historik (harmløst, ikke håndteret).
+
 ## Versionsstyring (as-built)
 - **Remote:** `origin` → **https://github.com/skj-1964/varmeflex**, branch `main`.
 - **Pushet (increment 4):** `584e997..3b3b2f5` (STATUS5-efterslæb + increment 4).
@@ -71,10 +94,17 @@ balance-modelfejlen (model-bane), plus et lille nyt haircut-scope-spørgsmål.
   `origin/main`:
   - `b94e174` grounding: balance-forbehold + fortegnskonvention i `grounding_da.md`.
   - `b15899e` kode: fortegns-vending (`scenarios.py`, `app.js`, `test_app.py`).
+- **Pushet (increment 4.2):** `b15899e..85983b0` — fire commits på `origin/main`:
+  - `d6a1f42` frontend: badge-escaping-fix (`app.js`).
+  - `5f6a958` frontend: Kopiér chat (`index.html`, `app.js`).
+  - `a9ad267` backend: rolle-scoped længdespærre (`app.py`, `test_app.py`).
+  - `85983b0` frontend: Ryd chat (`index.html`, `app.js`).
 - Hemmeligheder fortsat kun i `/etc/varmeflex`; `venv/` + `*.env` i `.gitignore`.
 
 ## Verificeret
-- **Testsuite: 27/27 OK** (inkl. to nye fortegns-assertions).
+- **Testsuite: 29/29 OK** (to fortegns-assertions fra 4.1 + to længdespærre-
+  assertions fra 4.2: langt assistent-svar i historik → ikke 413; over svarloft
+  → 413).
 - **`/api/sammenlign` live:** A vs B → `oekonomisk_vaerdi_dkk` +6.018.402, rå
   `objektiv_dkk` −6.018.402; C vs A → +220.219.554, rå −220.219.554,
   `balance_under_validering=true`. Matcher acceptkriterierne.
@@ -89,6 +119,9 @@ balance-modelfejlen (model-bane), plus et lille nyt haircut-scope-spørgsmål.
 - **Browser (increment 4 + 4.1):** lister, ref+alt-valg, kurver via eksisterende
   `tegn()`, periodevælger, Δ-tal, badge, advarsler samt den vendte økonomisk-
   værdi-overskrift (positiv ved besparelse) — bekræftet af bruger.
+- **Increment 4.2 live:** badge vist som pille (ikke rå tekst), Kopiér/Ryd chat
+  og fortsat samtale efter langt modelsvar — bruger-bekræftet ("det kører fint").
+  Backend genstartet efter længdespærre-ændringen; `/api/sundhed` → 3 scenarier.
 
 ## Referencetal
 Uændret katalog: tre ægte A/B/C-manifester i `output/` (C `…__bal-av`,
@@ -143,12 +176,11 @@ A − B er ikke ramt (ingen balancering) og er rent præsentabel: tankværdi
 curl -s "https://varmeflex.dk/api/sammenlign?reference=billund_2025__gh__2025&alternativ=billund_2025__gh__2025__bal-av" \
   --cookie "<session-cookie>"
 
-# Testsuite (27/27)
-cd /opt/varmeflex/backend && VARMEFLEX_COOKIE_SECURE=0 PYTHONPATH=. python3 tests/test_app.py
+# Testsuite (29/29) — brug venv'en (fastapi ligger der)
+cd /opt/varmeflex/backend && VARMEFLEX_COOKIE_SECURE=0 PYTHONPATH=. venv/bin/python tests/test_app.py
 
-# Git
-cd /opt/varmeflex && git status && git log --oneline -6
-git push origin main          # hvis 4.1-commits ikke er pushet
+# Git (alt pushet til origin/main; seneste HEAD = 85983b0)
+cd /opt/varmeflex && git status && git log --oneline -8
 
 # Service
 systemctl status varmeflex.service
