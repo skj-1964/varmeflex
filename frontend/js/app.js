@@ -167,9 +167,9 @@
     }).join("") + "</span>";
   }
 
-  function kpi(navn, vaerdi, enhed, ekstraKlasse, bi) {
+  function kpi(navn, vaerdi, enhed, ekstraKlasse, bi, badge) {
     return '<div class="kpi ' + (ekstraKlasse || "") + '">' +
-      '<div class="kpi__navn">' + esc(navn) + "</div>" +
+      '<div class="kpi__navn">' + esc(navn) + (badge || "") + "</div>" +
       '<div class="kpi__vaerdi">' + vaerdi +
         (enhed ? '<span class="kpi__enhed">' + esc(enhed) + "</span>" : "") + "</div>" +
       (bi ? '<div class="kpi__bi">' + bi + "</div>" : "") +
@@ -225,9 +225,8 @@
     // Balanceindtægt — markeret "under validering" (modelfejl, jf. STATUS)
     var balBi = 'aFRR <span class="tal">' + kr(bal.afrr) + "</span> · " +
                 'mFRR <span class="tal">' + kr(bal.mfrr) + "</span>";
-    var balNavn = "Balanceindtægt i alt" +
-                  '<span class="badge" title="Kendt modelfejl — tallene er urimeligt høje og må ikke bruges som resultat.">under validering — ikke gyldige tal</span>';
-    h += kpi(balNavn, kr(bal.i_alt), "kr.", "kpi--bred kpi--validering", balBi);
+    var balBadge = '<span class="badge" title="Kendt modelfejl — tallene er urimeligt høje og må ikke bruges som resultat.">under validering — ikke gyldige tal</span>';
+    h += kpi("Balanceindtægt i alt", kr(bal.i_alt), "kr.", "kpi--bred kpi--validering", balBi, balBadge);
     h += "</div></div>";
 
     // Enheder-tabel
@@ -362,11 +361,12 @@
     // Overskriftstal: økonomisk værdi = −Δobjektiv (positiv = besparelse).
     // objektiv_dkk er en omkostning, så lavere objektiv = bedre. Den rå
     // omkostnings-Δ vises som sekundær linje for sporbarhed.
-    h += kpi("Økonomisk værdi (alternativ vs reference)" + (underVal ? valBadge : ""),
+    h += kpi("Økonomisk værdi (alternativ vs reference)",
              krFortegn(d.oekonomisk_vaerdi_dkk), "kr.",
              "kpi--bred" + (underVal ? " kpi--validering" : ""),
              'positiv = besparelse/forbedring · rå omkostnings-Δ ' +
-             '<span class="tal">' + krFortegn(d.objektiv_dkk) + "</span> kr.");
+             '<span class="tal">' + krFortegn(d.objektiv_dkk) + "</span> kr.",
+             underVal ? valBadge : "");
     h += kpi("Δ CO₂", fortegn(d.co2_ton, 1), "ton");
     h += kpi("Δ Samlet produktion", fortegn(d.samlet_produktion_mwh, 1), "MWh");
     h += kpi("Δ Nettab", fortegn(d.nettab_mwh, 1), "MWh", "",
@@ -374,9 +374,10 @@
     // Balanceindtægts-Δ — altid markeret (forbeholds-ramt felt)
     var balBi = 'aFRR <span class="tal">' + krFortegn(bal.afrr) + "</span> · " +
                 'mFRR <span class="tal">' + krFortegn(bal.mfrr) + "</span>";
-    h += kpi("Δ Balanceindtægt i alt" + (bal.under_validering ? valBadge : ""),
+    h += kpi("Δ Balanceindtægt i alt",
              krFortegn(bal.i_alt), "kr.",
-             "kpi--bred" + (bal.under_validering ? " kpi--validering" : ""), balBi);
+             "kpi--bred" + (bal.under_validering ? " kpi--validering" : ""), balBi,
+             bal.under_validering ? valBadge : "");
     h += "</div>";
 
     // Invariant — sanity-check (forventet ~0)
@@ -581,6 +582,24 @@
       sendChat();
     }
   });
+
+  // Kopiér chat: serialisér tekst-historikken ({role,content}) til
+  // udklipsholderen. Scenarie-chips ligger uden for historikken (session 5)
+  // og kommer derfor ikke med. Rent frontend — intet backend-kald.
+  var elKopier = document.getElementById("chat-kopier");
+  if (elKopier) {
+    elKopier.addEventListener("click", function () {
+      if (!chatHistorik.length) return;
+      var tekst = chatHistorik.map(function (b) {
+        return (b.role === "user" ? "Spørgsmål" : "Svar") + ":\n" + b.content;
+      }).join("\n\n");
+      var hoved = "Chat fra varmeflex.dk · " + new Date().toLocaleString("da-DK") + "\n\n";
+      navigator.clipboard.writeText(hoved + tekst).then(function () {
+        elKopier.textContent = "Kopieret ✓";
+        setTimeout(function () { elKopier.textContent = "Kopiér chat"; }, 1500);
+      });
+    });
+  }
 
   // Sammenlign-knap: hent differens + alternativets kurver, vis i detaljepanelet.
   if (elSmlKnap) {
