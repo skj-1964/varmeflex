@@ -50,12 +50,16 @@ vis("C vs A -> reference/alternativ-id korrekt",
     j["reference"]["scenarie_id"] == A and j["alternativ"]["scenarie_id"] == C)
 vis("C vs A -> varmeefterspørgsel invariant (Δ≈0)",
     abs(j["invariant"]["varmeefterspoergsel_mwh"]["diff"]) <= 1)
+vis("C vs A -> økonomisk værdi = −objektiv_dkk (fortegns-vending)",
+    j["differens"]["oekonomisk_vaerdi_dkk"] == -j["differens"]["objektiv_dkk"])
 
 # A vs B: begge uden balancering -> intet forbehold; rent præsentabel.
 r = c.get(f"/api/sammenlign?reference={B}&alternativ={A}")
 j = r.json()
 vis("A vs B -> 200 + intet balance-forbehold",
     r.status_code == 200 and j["forbehold"]["balance_under_validering"] is False)
+vis("A vs B -> økonomisk værdi = −objektiv_dkk (positiv ved besparelse)",
+    j["differens"]["oekonomisk_vaerdi_dkk"] == -j["differens"]["objektiv_dkk"])
 
 # Enheds-union: en konstrueret enhed kun i alternativet -> 0 i reference, ingen crash.
 import scenarios as _scen

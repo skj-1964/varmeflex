@@ -359,9 +359,14 @@
     // RESULTATER: forskel (alternativ − reference)
     h += '<div class="sektion"><div class="sektion__titel">Resultater: forskel (alternativ − reference)</div>';
     h += '<div class="kpis sml-num">';
-    h += kpi("Δ Objektiv" + (underVal ? valBadge : ""),
-             krFortegn(d.objektiv_dkk), "kr.",
-             underVal ? "kpi--bred kpi--validering" : "");
+    // Overskriftstal: økonomisk værdi = −Δobjektiv (positiv = besparelse).
+    // objektiv_dkk er en omkostning, så lavere objektiv = bedre. Den rå
+    // omkostnings-Δ vises som sekundær linje for sporbarhed.
+    h += kpi("Økonomisk værdi (alternativ vs reference)" + (underVal ? valBadge : ""),
+             krFortegn(d.oekonomisk_vaerdi_dkk), "kr.",
+             "kpi--bred" + (underVal ? " kpi--validering" : ""),
+             'positiv = besparelse/forbedring · rå omkostnings-Δ ' +
+             '<span class="tal">' + krFortegn(d.objektiv_dkk) + "</span> kr.");
     h += kpi("Δ CO₂", fortegn(d.co2_ton, 1), "ton");
     h += kpi("Δ Samlet produktion", fortegn(d.samlet_produktion_mwh, 1), "MWh");
     h += kpi("Δ Nettab", fortegn(d.nettab_mwh, 1), "MWh", "",

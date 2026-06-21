@@ -512,7 +512,11 @@ def sammenlign_manifester(ref: dict, alt: dict, output_dir=None) -> dict:
         },
 
         "differens": {
+            # Rå omkostnings-Δ (alt − ref). Beholdt uændret for sporbarhed.
             "objektiv_dkk": diff("objektiv_dkk", 0),
+            # objektiv_dkk er en OMKOSTNING (lavere = bedre); den økonomiske
+            # værdi af alternativet er derfor −Δobjektiv → positiv ved besparelse.
+            "oekonomisk_vaerdi_dkk": round(-(diff("objektiv_dkk", 0)), 0),
             "co2_ton": diff("co2_ton", 1),
             "samlet_produktion_mwh": diff("samlet_produktion_mwh", 1),
             "nettab_mwh": diff("nettab_mwh", 1),
