@@ -128,4 +128,18 @@ backend.koer_chat_loop = lambda beskeder: {"svar": "STUB-SVAR", "manifester": []
 r = cc.post("/api/chat", json={"beskeder": [{"role": "user", "content": "hvad er værdien af tanken?"}]})
 vis("on-topic -> chat-loopet nås", r.status_code == 200 and r.json()["svar"] == "STUB-SVAR")
 
+# Rolle-scoped længdespærre: et langt ASSISTENT-svar i historikken (modellens
+# eget output, > brugerloft men < svarloft) må IKKE fælde spærren, når en kort
+# user-besked følger efter. (relevans_ok + koer_chat_loop er stubbet ovenfor.)
+langt_svar = {"role": "assistant", "content": "y" * (backend.MAX_BESKED_TEGN + 500)}
+kort_spm   = {"role": "user", "content": "og hvad med balancemarkedet?"}
+r = cc.post("/api/chat", json={"beskeder": [kort_spm, langt_svar, kort_spm]})
+vis("langt assistent-svar i historik -> ikke 413 (fortsat samtale)",
+    r.status_code == 200 and r.json()["svar"] == "STUB-SVAR")
+
+# Men et assistent-svar over svarloftet afvises stadig (værn mod oppustet historik).
+kæmpe_svar = {"role": "assistant", "content": "z" * (backend.MAX_SVAR_TEGN + 1)}
+r = cc.post("/api/chat", json={"beskeder": [kort_spm, kæmpe_svar, kort_spm]})
+vis("assistent-svar over svarloft -> 413", r.status_code == 413)
+
 print("\nAlle tests bestået.")

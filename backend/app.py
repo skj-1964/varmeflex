@@ -65,6 +65,7 @@ MAX_VAERKTOEJ_RUNDER = 8  # værn mod uendelige værktøjs-loops
 
 # Input-værn: så siden ikke kan misbruges som gratis generel chatbot.
 MAX_BESKED_TEGN = int(os.environ.get("VARMEFLEX_MAX_BESKED_TEGN", "2000"))
+MAX_SVAR_TEGN   = int(os.environ.get("VARMEFLEX_MAX_SVAR_TEGN", "8000"))
 MAX_BESKEDER = int(os.environ.get("VARMEFLEX_MAX_BESKEDER", "40"))
 
 # Relevans-tjek: billigt JA/NEJ med en lille model, FØR det dyre kald.
@@ -358,8 +359,14 @@ def chat(krop: ChatInd, varmeflex_session: str | None = Cookie(default=None)):
     # Input-værn: bremser misbrug som generel chatbot.
     if len(krop.beskeder) > MAX_BESKEDER:
         raise HTTPException(status_code=413, detail="Samtalen er for lang. Start en ny.")
+    # Det stramme tegn-loft gælder kun brugerinput (utroværdigt + cost-drivende).
+    # Assistent-ture er modellens egne svar, allerede bundet af max_tokens; de får
+    # et rigeligere loft, så et langt svar i historikken ikke fælder spærren.
     for b in krop.beskeder:
-        if isinstance(b.get("content"), str) and len(b["content"]) > MAX_BESKED_TEGN:
+        if not isinstance(b.get("content"), str):
+            continue
+        graense = MAX_BESKED_TEGN if b.get("role") == "user" else MAX_SVAR_TEGN
+        if len(b["content"]) > graense:
             raise HTTPException(status_code=413, detail="Beskeden er for lang.")
 
     ok, aarsag = limiter.tjek_og_tael(session["sid"])
