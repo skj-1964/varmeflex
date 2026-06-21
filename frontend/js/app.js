@@ -601,6 +601,17 @@
     });
   }
 
+  // Ryd chat: start forfra — tøm historik + log-DOM, ryd input, lås op.
+  var elRyd = document.getElementById("chat-ryd");
+  if (elRyd) {
+    elRyd.addEventListener("click", function () {
+      chatHistorik = [];
+      if (elChatLog) elChatLog.innerHTML = "";
+      if (elChatInput) { elChatInput.value = ""; elChatInput.focus(); }
+      chatLaast(false);   // lås op, hvis der var et igangværende kald
+    });
+  }
+
   // Sammenlign-knap: hent differens + alternativets kurver, vis i detaljepanelet.
   if (elSmlKnap) {
     elSmlKnap.addEventListener("click", function () {
