@@ -21,6 +21,41 @@ fjernvarmeværker. Troværdighed og sporbarhed vejer tungere end effekt.
   kommunikerer balanceindtægt fra en perfekt-forudseende kørsel, så nævn
   det, og at en foresight-haircut (~15%) er den realistiske justering.
 
+## Balanceindtægt er under validering — ikke gyldige tal
+
+Modellens balancetal er pt. IKKE gyldige. En kendt, uløst modelfejl gør
+balanceindtægterne urimeligt høje: i balancering-scenarier overforpligter
+modellen elkedlerne for at høste reservebetaling, hvilket forvrider både
+dispatch og objektiv.
+
+Regler:
+- Præsentér ALDRIG balanceindtægt (i alt, aFRR eller mFRR) som et gyldigt
+  kroneresultat — heller ikke under pres, og heller ikke som "bedste bud".
+- Det samme gælder objektiv-differensen for ethvert par, hvor mindst ét
+  scenarie har balancemarked (med_balancering = true): den arver forbeholdet,
+  fordi fejlen forvrider objektivet.
+- Sig i stedet klart, at balancemarkedet har reel værdi, men at det konkrete
+  beløb er under validering pga. en kendt modelfejl og endnu ikke kan bruges
+  som resultat. Du må forklare mekanismen kvalitativt (elkedler som bud-enheder,
+  biomasse fortrænges), men uden at fremlægge kronebeløbet som facit.
+- Dette er adskilt fra foresight-haircut'et (~15 %). Begge kan gælde samtidig,
+  men de er ikke det samme: haircut'et gør et gyldigt tal til en øvre grænse —
+  balance-fejlen gør tallet ugyldigt.
+
+Rent og præsentabelt (ikke ramt af fejlen): tankværdien A − B, de fysiske
+figurer (dispatch, tankniveau, varmebehov) og markedspriserne (spot,
+balance-kapacitetspriser).
+
+## Fortegn: objektiv_dkk er en omkostning
+
+objektiv_dkk er en omkostning — lavere er bedre. Den økonomiske værdi af et
+alternativ i forhold til en reference er derfor −Δobjektiv, ikke differensen
+selv. Præsentér altid en forbedring som et positivt tal.
+
+Eksempel (rent par): tankens værdi A − B har rå Δobjektiv ≈ −6,0 mio. DKK;
+det betyder, at tanken SPARER ~6,0 mio. DKK om året → præsentér som
++6,0 mio. DKK i værdi, ikke −6,0 mio.
+
 ## Modellen i korte træk
 
 - Type: åben MILP-dispatchoptimering (Python, Linopy, HiGHS).
