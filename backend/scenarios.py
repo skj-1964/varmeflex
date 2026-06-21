@@ -364,6 +364,180 @@ def run_scenario(
 
 
 # --------------------------------------------------------------------------
+# sammenlign() — differens mellem to vilkårlige kørsler (kontraktens §2.3)
+# --------------------------------------------------------------------------
+#
+# Differensen beregnes "ovenpå" ved at parre to manifester — ikke i værktøjet
+# og ikke i frontenden. Det realiserer §2.3: én sammenligning kræver kun to
+# manifester, uanset om de kom fra cache (fase 1) eller live solver (fase 2).
+# Derfor er der intet at kassere i fase 2 — denne funktion rører kun nøgletal.
+#
+# Bevidst GENERISK over felterne: ingen viden om A/B/C eller faste roller.
+# Enhver kørsel kan være reference eller alternativ, også fremtidige (fx en
+# kørsel med en ekstra motor). Det er unionen af enheder, der gør "installér en
+# ekstra enhed og sammenlign"-casen mulig uden kodeændring senere.
+
+# Lille tolerance på varmebehovet (MWh): under denne regnes to kørsler som
+# havende "samme" varmebehov. Behovet er en model-INPUT og bør være identisk
+# for parrede scenarier; en lille tolerance dækker afrundingsstøj.
+_VARMEBEHOV_TOLERANCE_MWH = 1.0
+
+
+def _balance_som_tal(bal) -> dict:
+    """Normalisér balanceindtaegt_dkk til tal. Feltet er null uden balancering
+    (jf. TRIN 0: A og B har null) — null behandles som 0, så differensen kan
+    beregnes ensartet uanset om den ene side mangler balancemarked."""
+    bal = bal or {}
+    return {
+        "i_alt": float(bal.get("i_alt") or 0.0),
+        "afrr": float(bal.get("afrr") or 0.0),
+        "mfrr": float(bal.get("mfrr") or 0.0),
+    }
+
+
+def _enheds_produktion(m: dict) -> dict[str, float]:
+    """navn -> produktion_mwh for ét manifest. Bruges til union på tværs."""
+    ud: dict[str, float] = {}
+    for e in m.get("enheder", []) or []:
+        navn = e.get("navn")
+        if navn is None:
+            continue
+        ud[navn] = float(e.get("produktion_mwh") or 0.0)
+    return ud
+
+
+def _scenarie_ref(m: dict, variant_label: str) -> dict:
+    meta = m.get("meta", {})
+    return {
+        "scenarie_id": m.get("scenarie_id", ""),
+        "titel": meta.get("titel") or meta.get("case_name") or m.get("scenarie_id", ""),
+        "variant_label": variant_label,
+    }
+
+
+def _variant_label_index(output_dir) -> dict[str, str]:
+    """scenarie_id -> variant_label. Etiketten beregnes kun i kataloget (den
+    kræver at se hele gruppen), så vi slår den op dér frem for at genberegne."""
+    return {r.scenarie_id: r.variant_label for r in list_scenarier(output_dir)}
+
+
+def sammenlign_manifester(ref: dict, alt: dict, output_dir=None) -> dict:
+    """Byg et purpose-built 'sammenligning'-objekt: differensen alternativ −
+    reference, beregnet generisk over nøgletallene. Forudsætter at begge
+    manifester allerede er slået op (app-laget oversætter ukendt id til 404).
+
+    Ingen _serier her — kurverne henter frontenden separat via
+    /api/scenarie/{alternativ}?inkluder_serier=true. Vi rører kun tal."""
+    labels = _variant_label_index(output_dir)
+    ref_label = labels.get(ref.get("scenarie_id", ""), "")
+    alt_label = labels.get(alt.get("scenarie_id", ""), "")
+
+    nref = ref.get("noegletal", {})
+    nalt = alt.get("noegletal", {})
+
+    def f(d, k):  # robust float-aflæsning, manglende -> 0
+        return float(d.get(k) or 0.0)
+
+    def diff(k, decimaler=1):
+        return round(f(nalt, k) - f(nref, k), decimaler)
+
+    # --- Balanceindtægt (forbeholds-ramt) -------------------------------------
+    bref = _balance_som_tal(nref.get("balanceindtaegt_dkk"))
+    balt = _balance_som_tal(nalt.get("balanceindtaegt_dkk"))
+
+    # --- Forbehold: trigges af manifestet (med_balancering), ikke af id ------
+    ref_bal = bool(ref.get("koersel", {}).get("med_balancering", False))
+    alt_bal = bool(alt.get("koersel", {}).get("med_balancering", False))
+    balance_under_validering = ref_bal or alt_bal
+
+    # --- Enheds-union (kernen i "vilkårlig parring") --------------------------
+    prod_ref = _enheds_produktion(ref)
+    prod_alt = _enheds_produktion(alt)
+    alle_navne = sorted(set(prod_ref) | set(prod_alt))
+    enheder = []
+    for navn in alle_navne:
+        p_ref = prod_ref.get(navn, 0.0)
+        p_alt = prod_alt.get(navn, 0.0)
+        enheder.append({
+            "navn": navn,
+            "produktion_ref": round(p_ref, 1),
+            "produktion_alt": round(p_alt, 1),
+            "diff": round(p_alt - p_ref, 1),
+        })
+
+    # --- Sammenlignelighed (soft — bloker ALDRIG) ----------------------------
+    ko_ref = ref.get("koersel", {})
+    ko_alt = alt.get("koersel", {})
+    case_ref = ref.get("meta", {}).get("case_name")
+    case_alt = alt.get("meta", {}).get("case_name")
+    per_ref = ko_ref.get("periode", {})
+    per_alt = ko_alt.get("periode", {})
+
+    samme_case = case_ref == case_alt
+    samme_periode = (per_ref.get("start") == per_alt.get("start")
+                     and per_ref.get("slut") == per_alt.get("slut"))
+    vb_ref = f(nref, "varmeefterspoergsel_mwh")
+    vb_alt = f(nalt, "varmeefterspoergsel_mwh")
+    samme_varmebehov = abs(vb_alt - vb_ref) <= _VARMEBEHOV_TOLERANCE_MWH
+
+    advarsler: list[str] = []
+    if not samme_case:
+        advarsler.append("Forskellig case — differensen er muligvis ikke direkte sammenlignelig.")
+    if not samme_periode:
+        advarsler.append("Forskellig periode — differensen er muligvis ikke direkte sammenlignelig.")
+    if not samme_varmebehov:
+        advarsler.append("Forskelligt varmebehov — differensen er muligvis ikke direkte sammenlignelig.")
+
+    note = None
+    if balance_under_validering:
+        note = ("En af kørslerne bruger balancemarkedet. Balance-tallene er ramt "
+                "af en kendt modelfejl (urimeligt høje) — både balanceindtægts- og "
+                "objektiv-differensen er derfor under validering og må ikke bruges "
+                "som resultat.")
+
+    return {
+        "reference": _scenarie_ref(ref, ref_label),
+        "alternativ": _scenarie_ref(alt, alt_label),
+
+        "sammenlignelighed": {
+            "samme_case": samme_case,
+            "samme_periode": samme_periode,
+            "samme_varmebehov": samme_varmebehov,
+            "advarsler": advarsler,
+        },
+
+        "forbehold": {
+            "balance_under_validering": balance_under_validering,
+            "note": note,
+        },
+
+        "differens": {
+            "objektiv_dkk": diff("objektiv_dkk", 0),
+            "co2_ton": diff("co2_ton", 1),
+            "samlet_produktion_mwh": diff("samlet_produktion_mwh", 1),
+            "nettab_mwh": diff("nettab_mwh", 1),
+            "nettab_pct_point": diff("nettab_pct", 1),
+            "balanceindtaegt_dkk": {
+                "i_alt": round(balt["i_alt"] - bref["i_alt"], 0),
+                "afrr": round(balt["afrr"] - bref["afrr"], 0),
+                "mfrr": round(balt["mfrr"] - bref["mfrr"], 0),
+                "under_validering": balance_under_validering,
+            },
+        },
+
+        "invariant": {
+            "varmeefterspoergsel_mwh": {
+                "reference": round(vb_ref, 1),
+                "alternativ": round(vb_alt, 1),
+                "diff": round(vb_alt - vb_ref, 1),
+            },
+        },
+
+        "enheder": enheder,
+    }
+
+
+# --------------------------------------------------------------------------
 # Røgtest — kør modulet direkte mod et fikstur-katalog
 # --------------------------------------------------------------------------
 

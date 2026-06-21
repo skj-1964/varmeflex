@@ -102,6 +102,15 @@
       return hent("/sundhed");
     },
 
+    /** Sammenlign to kørsler: differens (alternativ − reference). Returnerer
+     * et 'sammenligning'-objekt (tal kun — kurver hentes via scenarie()).
+     * Kræver session (401/403 → AuthFejl); ukendt id → 404 → ApiFejl med
+     * serverens danske detalje. */
+    sammenlign: function (referenceId, alternativId) {
+      return hent("/sammenlign?reference=" + encodeURIComponent(referenceId) +
+                  "&alternativ=" + encodeURIComponent(alternativId));
+    },
+
     /** Chat-runde: send HELE beskedhistorikken (kun {role, content}-tekst) og
      * få {svar, manifester} retur. Kræver session (401/403 → AuthFejl).
      * Rate limit (429), input-værn (413) og serverfejl kommer som ApiFejl med

@@ -32,6 +32,53 @@ r = c.get("/api/scenarie/billund_2025__gh__2025__no-tank")
 vis("enkelt manifest -> 200, rigtig nøgle", r.status_code == 200 and r.json()["scenarie_id"].endswith("no-tank"))
 vis("ukendt manifest -> 404", c.get("/api/scenarie/findes_ikke").status_code == 404)
 
+print("\n=== Sammenlign (differens, increment 4) ===")
+C = "billund_2025__gh__2025__bal-av"      # med balancering
+A = "billund_2025__gh__2025"              # uden balancering, med tank
+B = "billund_2025__gh__2025__no-tank"     # uden balancering, uden tank
+
+# C som alternativ, A som reference -> balancemarkedets værdi; forbehold rejst.
+r = c.get(f"/api/sammenlign?reference={A}&alternativ={C}")
+j = r.json()
+vis("C vs A -> 200 + forbehold (balancering indgår)",
+    r.status_code == 200 and j["forbehold"]["balance_under_validering"] is True
+    and j["differens"]["balanceindtaegt_dkk"]["under_validering"] is True)
+vis("C vs A -> differens-felter til stede",
+    all(k in j["differens"] for k in
+        ("objektiv_dkk", "co2_ton", "samlet_produktion_mwh", "nettab_mwh", "nettab_pct_point")))
+vis("C vs A -> reference/alternativ-id korrekt",
+    j["reference"]["scenarie_id"] == A and j["alternativ"]["scenarie_id"] == C)
+vis("C vs A -> varmeefterspørgsel invariant (Δ≈0)",
+    abs(j["invariant"]["varmeefterspoergsel_mwh"]["diff"]) <= 1)
+
+# A vs B: begge uden balancering -> intet forbehold; rent præsentabel.
+r = c.get(f"/api/sammenlign?reference={B}&alternativ={A}")
+j = r.json()
+vis("A vs B -> 200 + intet balance-forbehold",
+    r.status_code == 200 and j["forbehold"]["balance_under_validering"] is False)
+
+# Enheds-union: en konstrueret enhed kun i alternativet -> 0 i reference, ingen crash.
+import scenarios as _scen
+_ref = _scen.get_manifest_by_id(B, backend.OUTPUT_DIR)
+_alt = _scen.get_manifest_by_id(A, backend.OUTPUT_DIR)
+_alt = dict(_alt); _alt["enheder"] = list(_alt.get("enheder", [])) + [
+    {"navn": "gasmotor_2", "produktion_mwh": 1234.5}]
+_smp = _scen.sammenlign_manifester(_ref, _alt, backend.OUTPUT_DIR)
+_g2 = [e for e in _smp["enheder"] if e["navn"] == "gasmotor_2"]
+vis("enheds-union: ny enhed kun i alt -> 0 i ref, diff = produktion",
+    len(_g2) == 1 and _g2[0]["produktion_ref"] == 0 and _g2[0]["diff"] == 1234.5)
+
+# Ukendt id -> 404 med dansk detalje.
+r = c.get(f"/api/sammenlign?reference={A}&alternativ=findes_ikke")
+vis("ukendt id -> 404 dansk", r.status_code == 404 and "Ukendt scenarie" in r.json()["detail"])
+
+# Samme i begge -> triviel 0-differens (sanity).
+r = c.get(f"/api/sammenlign?reference={A}&alternativ={A}")
+j = r.json()
+vis("samme i begge -> 0-differens",
+    r.status_code == 200 and j["differens"]["objektiv_dkk"] == 0
+    and j["differens"]["samlet_produktion_mwh"] == 0)
+
 print("\n=== Forfalsket cookie afvises ===")
 c2 = TestClient(backend.app)
 c2.cookies.set(backend.COOKIE_NAVN, "snydt.deadbeef")

@@ -29,6 +29,9 @@
   var elChatForm  = document.getElementById("chat-form");
   var elChatInput = document.getElementById("chat-input");
   var elChatSend  = document.getElementById("chat-send");
+  var elSmlRef    = document.getElementById("sml-ref");
+  var elSmlAlt    = document.getElementById("sml-alt");
+  var elSmlKnap   = document.getElementById("sml-knap");
 
   var valgtId = null;
 
@@ -274,6 +277,157 @@
     return r;
   }
 
+  // --- Sammenlign: render-vej (parallel til vaelgScenarie) ----------------
+  // Δ-tal med synligt fortegn. Bruger U+2212 (−) som minus, som resten af UI'et.
+  function fortegn(v, decimaler) {
+    if (v === null || v === undefined || v === "") return "—";
+    var n = Number(v);
+    if (!isFinite(n)) return "—";
+    var s = (decimaler === 1 ? nf1 : nfHel).format(Math.abs(n));
+    return (n > 0 ? "+" : n < 0 ? "−" : "") + s;
+  }
+  function krFortegn(v) {
+    if (v === null || v === undefined) return "—";
+    var n = Number(v);
+    if (!isFinite(n)) return "—";
+    return (n > 0 ? "+" : n < 0 ? "−" : "") + nfHel.format(Math.abs(Math.round(n)));
+  }
+
+  // Kaldes fra "Sammenlign"-knappen. Henter differensen (tal) OG alternativets
+  // serier (kurver) parallelt; renderer i SAMME detaljepanel som enkelt-visningen
+  // (de to visninger er gensidigt udelukkende). vaelgScenarie er uændret.
+  function vaelgSammenligning(refId, altId) {
+    valgtId = null;
+    markerAktiv(null);
+    elDetaljeTom.hidden = true;
+    elDetalje.hidden = false;
+    if (elDetalje.scrollIntoView) {
+      elDetalje.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    elDetalje.innerHTML = '<div class="tom-besked">Sammenligner …</div>';
+
+    Promise.all([
+      API.sammenlign(refId, altId),
+      API.scenarie(altId, true),   // alternativets serier til kurverne
+    ]).then(function (res) {
+      tegnSammenligning(res[0], res[1]);
+    }).catch(function (fejl) {
+      if (fejl instanceof API.AuthFejl) { visLogin(); return; }
+      elDetalje.innerHTML = '<div class="fejl">' + esc(fejl.message) + "</div>";
+    });
+  }
+
+  function tegnSammenligning(s, altManifest) {
+    var ref = s.reference || {};
+    var alt = s.alternativ || {};
+    var d   = s.differens || {};
+    var bal = d.balanceindtaegt_dkk || {};
+    var inv = (s.invariant || {}).varmeefterspoergsel_mwh || {};
+    var forbehold = s.forbehold || {};
+    var smlhed = s.sammenlignelighed || {};
+    var underVal = !!forbehold.balance_under_validering;
+
+    function refLinje(o) {
+      return esc(o.titel || o.scenarie_id) +
+        (o.variant_label ? ' <span class="tekst-svag">· ' + esc(o.variant_label) + "</span>" : "");
+    }
+
+    var valBadge = '<span class="badge" title="Kendt modelfejl — balance forvrider dispatch/objektiv. Tallene må ikke bruges som resultat.">under validering — ikke gyldige tal</span>';
+
+    var h = "";
+
+    // Hoved: hvad sammenlignes
+    h += '<div class="detalje__hoved">';
+    h += '<h2 class="detalje__titel">Sammenligning</h2>';
+    h += '<p class="detalje__beskrivelse sml__par">' +
+         '<span class="sml__rolle">Alternativ:</span> ' + refLinje(alt) + '<br>' +
+         '<span class="sml__rolle">Reference:</span> ' + refLinje(ref) + "</p>";
+    h += "</div>";
+
+    // Advarsler (usammenlignelige par) — rolig dansk note
+    if (smlhed.advarsler && smlhed.advarsler.length) {
+      h += '<div class="sml-note" role="note">';
+      smlhed.advarsler.forEach(function (a) { h += "<p>" + esc(a) + "</p>"; });
+      h += "</div>";
+    }
+    // Forbehold-note ved balancering
+    if (underVal && forbehold.note) {
+      h += '<div class="sml-note sml-note--validering" role="note"><p>' +
+           esc(forbehold.note) + "</p></div>";
+    }
+
+    // RESULTATER: forskel (alternativ − reference)
+    h += '<div class="sektion"><div class="sektion__titel">Resultater: forskel (alternativ − reference)</div>';
+    h += '<div class="kpis sml-num">';
+    h += kpi("Δ Objektiv" + (underVal ? valBadge : ""),
+             krFortegn(d.objektiv_dkk), "kr.",
+             underVal ? "kpi--bred kpi--validering" : "");
+    h += kpi("Δ CO₂", fortegn(d.co2_ton, 1), "ton");
+    h += kpi("Δ Samlet produktion", fortegn(d.samlet_produktion_mwh, 1), "MWh");
+    h += kpi("Δ Nettab", fortegn(d.nettab_mwh, 1), "MWh", "",
+             '<span class="tal">' + fortegn(d.nettab_pct_point, 1) + " pct.point</span>");
+    // Balanceindtægts-Δ — altid markeret (forbeholds-ramt felt)
+    var balBi = 'aFRR <span class="tal">' + krFortegn(bal.afrr) + "</span> · " +
+                'mFRR <span class="tal">' + krFortegn(bal.mfrr) + "</span>";
+    h += kpi("Δ Balanceindtægt i alt" + (bal.under_validering ? valBadge : ""),
+             krFortegn(bal.i_alt), "kr.",
+             "kpi--bred" + (bal.under_validering ? " kpi--validering" : ""), balBi);
+    h += "</div>";
+
+    // Invariant — sanity-check (forventet ~0)
+    h += '<div class="sml-invariant"><span class="sml-invariant__navn">Varmeefterspørgsel (invariant)</span> ' +
+         '<span class="tal">' + tal(inv.reference, 1) + "</span> → " +
+         '<span class="tal">' + tal(inv.alternativ, 1) + "</span> MWh · Δ " +
+         '<span class="tal">' + fortegn(inv.diff, 1) + "</span> MWh" +
+         (Math.abs(Number(inv.diff) || 0) <= 1 ? " (≈0, som forventet)" : "") + "</div>";
+    h += "</div>";
+
+    // Enheder — produktions-Δ pr. enhed (union)
+    h += '<div class="sektion"><div class="sektion__titel">Produktion pr. enhed (Δ MWh)</div>';
+    h += tegnSammenlignEnheder(s.enheder || []);
+    h += "</div>";
+
+    // KURVER: alternativets drift
+    h += '<div class="sektion"><div class="sektion__titel">Kurver: alternativets drift (' +
+         esc(alt.titel || alt.scenarie_id) + ")</div>";
+    h += '<div id="fig-periode" class="fig-periode"></div>';
+    h += '<div id="fig-dispatch" class="fig"></div>';
+    h += '<div id="fig-tank" class="fig"></div>';
+    h += '<div id="fig-spot" class="fig"></div>';
+    h += '<div id="fig-balance" class="fig"></div>';
+    h += "</div>";
+
+    elDetalje.innerHTML = h;
+
+    // Kurverne tegnes af den EKSISTERENDE figurer.js — nul ændring dér.
+    if (window.VarmeflexFigurer && altManifest) {
+      try { window.VarmeflexFigurer.tegn(altManifest); }
+      catch (e) {
+        var fd = document.getElementById("fig-dispatch");
+        if (fd) fd.innerHTML = '<p class="fig-tom">Kunne ikke tegne figuren.</p>';
+      }
+    }
+  }
+
+  function tegnSammenlignEnheder(enheder) {
+    if (!enheder.length) {
+      return '<p class="tom-rk">Ingen enheder i de to manifester.</p>';
+    }
+    var r = '<div class="tabel-rul"><table class="tabel"><thead><tr>' +
+      "<th>Enhed</th><th>Reference (MWh)</th><th>Alternativ (MWh)</th><th>Δ (MWh)</th>" +
+      "</tr></thead><tbody>";
+    enheder.forEach(function (e) {
+      r += "<tr>" +
+        '<td class="navn">' + esc(e.navn) + "</td>" +
+        "<td>" + tal(e.produktion_ref, 1) + "</td>" +
+        "<td>" + tal(e.produktion_alt, 1) + "</td>" +
+        '<td class="tal">' + fortegn(e.diff, 1) + "</td>" +
+        "</tr>";
+    });
+    r += "</tbody></table></div>";
+    return r;
+  }
+
   // --- Datahentning med auth-fallback -------------------------------------
   function hentKatalogOgVis() {
     return API.scenarier().then(function (scenarier) {
@@ -286,7 +440,31 @@
         katalogIndex[s.scenarie_id] = { titel: s.titel, variant_label: s.variant_label };
       });
       tegnMenu(scenarier);
+      fyldSammenlignListe(scenarier);
     });
+  }
+
+  // --- Sammenlign-tilstand (increment 4) ----------------------------------
+  // Fyld de to select-lister fra kataloget. Vilkårlig parring tilladt; intet
+  // hardcodet — ref og alt vælges frit, også samme i begge (triviel 0-diff).
+  function fyldSammenlignListe(scenarier) {
+    if (!elSmlRef || !elSmlAlt) return;
+    function muligheder() {
+      return scenarier.map(function (s) {
+        var label = s.titel || s.scenarie_id;
+        if (s.variant_label) label += " · " + s.variant_label;
+        var o = document.createElement("option");
+        o.value = s.scenarie_id;
+        o.textContent = label;
+        return o;
+      });
+    }
+    elSmlRef.innerHTML = "";
+    elSmlAlt.innerHTML = "";
+    muligheder().forEach(function (o) { elSmlRef.appendChild(o); });
+    muligheder().forEach(function (o) { elSmlAlt.appendChild(o); });
+    // Fornuftig default: forskellige hvis muligt (ref = første, alt = anden).
+    if (scenarier.length > 1) elSmlAlt.selectedIndex = 1;
   }
 
   // --- Chat ----------------------------------------------------------------
@@ -398,6 +576,16 @@
       sendChat();
     }
   });
+
+  // Sammenlign-knap: hent differens + alternativets kurver, vis i detaljepanelet.
+  if (elSmlKnap) {
+    elSmlKnap.addEventListener("click", function () {
+      var refId = elSmlRef && elSmlRef.value;
+      var altId = elSmlAlt && elSmlAlt.value;
+      if (!refId || !altId) return;
+      vaelgSammenligning(refId, altId);
+    });
+  }
 
   // --- Login-flow ----------------------------------------------------------
   elLoginForm.addEventListener("submit", function (ev) {

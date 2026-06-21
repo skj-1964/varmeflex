@@ -331,6 +331,26 @@ def get_scenarie(scenarie_id: str, inkluder_serier: bool = False,
     return m
 
 
+@app.get("/api/sammenlign")
+def sammenlign(reference: str, alternativ: str,
+               varmeflex_session: str | None = Cookie(default=None)):
+    """Differens mellem to vilkårlige kørsler (reference vs alternativ).
+    Skrivebeskyttet, bag samme gate som de øvrige scenario-endpoints. Kalder
+    IKKE Anthropic (ingen API-omkostning) og er derfor ikke rate-limitet.
+
+    Selve differensen beregnes generisk i scenarios.sammenlign_manifester —
+    ingen viden om A/B/C. Kurverne henter frontenden separat via
+    /api/scenarie/{alternativ}?inkluder_serier=true; dette endpoint er let."""
+    _krev_session(varmeflex_session)
+    ref_m = scenarios.get_manifest_by_id(reference, OUTPUT_DIR)
+    alt_m = scenarios.get_manifest_by_id(alternativ, OUTPUT_DIR)
+    mangler = [sid for sid, m in ((reference, ref_m), (alternativ, alt_m)) if m is None]
+    if mangler:
+        raise HTTPException(status_code=404,
+                            detail="Ukendt scenarie: " + ", ".join(mangler) + ".")
+    return scenarios.sammenlign_manifester(ref_m, alt_m, OUTPUT_DIR)
+
+
 @app.post("/api/chat")
 def chat(krop: ChatInd, varmeflex_session: str | None = Cookie(default=None)):
     session = _krev_session(varmeflex_session)

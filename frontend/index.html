@@ -63,6 +63,24 @@
           <h2 class="panel__titel">Scenarier</h2>
           <p class="menu__hjaelp">Vælg en kørsel for at se nøgletal og enheder.</p>
           <ul id="scenarie-liste" class="menu"></ul>
+
+          <!-- Sammenlign to vilkårlige kørsler (increment 4) -->
+          <div class="sammenlign" aria-label="Sammenlign kørsler">
+            <h3 class="sammenlign__titel">Sammenlign to kørsler</h3>
+            <p class="menu__hjaelp">
+              Vælg en reference og et alternativ. Resultater = forskel
+              (alternativ − reference); kurver = alternativets drift.
+            </p>
+            <label class="felt felt--sml">
+              <span class="felt__navn">Reference</span>
+              <select id="sml-ref" class="felt__input felt__input--select"></select>
+            </label>
+            <label class="felt felt--sml">
+              <span class="felt__navn">Alternativ</span>
+              <select id="sml-alt" class="felt__input felt__input--select"></select>
+            </label>
+            <button id="sml-knap" class="knap knap--primaer" type="button">Sammenlign</button>
+          </div>
         </aside>
 
         <!-- Detaljepanel -->

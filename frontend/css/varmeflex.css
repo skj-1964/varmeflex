@@ -452,6 +452,58 @@ h1, h2, h3 { font-weight: 600; line-height: 1.25; margin: 0; }
 .fig .u-legend .u-value { font-variant-numeric: tabular-nums; color: var(--tekst); }
 .fig .u-axis { font-variant-numeric: tabular-nums; }
 
+/* ---------------- Sammenlign (increment 4) ---------------- */
+.sammenlign {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--kant);
+}
+.sammenlign__titel {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--tekst-svag);
+  margin: 0 0 10px;
+}
+.felt--sml { margin-bottom: 10px; }
+.felt__input--select {
+  width: 100%;
+  background: #fff;
+}
+
+/* Sammenlignings-hoved: hvad sammenlignes med hvad */
+.sml__par { white-space: normal; line-height: 1.5; }
+.sml__rolle { color: var(--tekst-svag); font-weight: 600; }
+
+/* Rolige danske noter (advarsler + forbehold) */
+.sml-note {
+  border: 1px solid var(--kant);
+  background: var(--kant-2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--tekst-svag);
+}
+.sml-note p { margin: 0 0 6px; }
+.sml-note p:last-child { margin-bottom: 0; }
+.sml-note--validering {
+  background: var(--advarsel-bg);
+  border-color: var(--advarsel-kant);
+  color: var(--advarsel-tekst);
+}
+
+/* Δ-tal: tabular-nums, så fortegn flugter */
+.sml-num .kpi__vaerdi { font-variant-numeric: tabular-nums; }
+
+/* Invariant-linje (sanity-check) */
+.sml-invariant {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--tekst-svag);
+}
+.sml-invariant__navn { font-weight: 600; }
+
 /* ---------------- Responsivt ---------------- */
 @media (max-width: 820px) {
   .app__grid { grid-template-columns: 1fr; }
