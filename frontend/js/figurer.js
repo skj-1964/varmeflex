@@ -180,10 +180,22 @@
     if (dispatch.captionEl) dispatch.captionEl.textContent = granTekst(gran);
   }
 
-  // Dansk dato-akse.
+  // Dansk dato-akse. Under en uge (time-zoom) viser vi også klokkeslæt
+  // (mm-dd hh) og hælder labels -45°, så de ikke overlapper.
   var datoFmt = new Intl.DateTimeFormat("da-DK", { day: "numeric", month: "short" });
+  function tidLabel(sek) {
+    var d = new Date(sek * 1000);
+    return pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + ":00";
+  }
+  function xUnderUge(u) {
+    var sc = u.scales.x;
+    return !!(sc && sc.min != null && sc.max != null && (sc.max - sc.min) < UGE_S);
+  }
   function aksedatoer(u, splits) {
-    return splits.map(function (s) { return datoFmt.format(new Date(s * 1000)); });
+    var medTime = xUnderUge(u);
+    return splits.map(function (s) {
+      return medTime ? tidLabel(s) : datoFmt.format(new Date(s * 1000));
+    });
   }
   function bredde(el) { return Math.max(280, el.clientWidth); }
 
@@ -205,7 +217,11 @@
         opdaterDispatchAgg(sc.min, sc.max);  // ombuk dispatch-søjlerne til nyt zoom-niveau
       }] },
       axes: [
-        { values: aksedatoer, grid: { stroke: "#ededea" }, ticks: { stroke: "#d8d8d4" }, stroke: "#5b6168" },
+        { values: aksedatoer,
+          // Under en uge: hæld labels -45° og giv aksen mere højde (mm-dd hh).
+          rotate: function (u) { return xUnderUge(u) ? -45 : 0; },
+          size: function (u) { return xUnderUge(u) ? 72 : 50; },
+          grid: { stroke: "#ededea" }, ticks: { stroke: "#d8d8d4" }, stroke: "#5b6168" },
         { label: yLabel, grid: { stroke: "#ededea" }, ticks: { stroke: "#d8d8d4" }, stroke: "#5b6168",
           values: function (u, s) { return s.map(function (v) { return nf0.format(v); }); } },
       ],
