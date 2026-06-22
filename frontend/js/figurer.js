@@ -1,6 +1,6 @@
 /* figurer.js — figurer for varmeflex.dk (increment 2).
  *
- * Tegner dispatch (stacked areal), tankniveau, spotpris og balancepriser med
+ * Tegner dispatch (stakkede søjler), tankniveau, spotpris og balancepriser med
  * uPlot (vendéret lokalt i vendor/, intet runtime-CDN). Alle serier kommer fra
  * manifestets ægte _serier (inkluder_serier=true) — aldrig pyntetal.
  *
@@ -128,52 +128,65 @@
 
   function tilfoej(opts, data, el) { instanser.push({ u: new global.uPlot(opts, data, el), el: el }); }
 
-  // --- Dispatch: stacked areal + behovslinje -------------------------------
+  // --- Dispatch: stakkede søjler + behovslinje -----------------------------
+  // Søjle-stak uden bands: hver enheds serie er den KUMULEREDE top (egen + alt
+  // under den), tegnet som søjle fra 0. Serierne lægges TOP-først, så den nederste
+  // enhed tegnes sidst og overmaler den lave del af de højere søjler — resultatet
+  // er en korrekt stak, uafhængigt af uPlots band-opførsel med søjle-paths.
+  // Søjle-bredden (size 0.9) er ~fuld ved helår (8.759 timer smelter til en
+  // profil) og bliver til adskilte søjler, når man zoomer ind på dage/uger.
+  var soejler = (global.uPlot.paths && global.uPlot.paths.bars)
+    ? global.uPlot.paths.bars({ size: [0.9, Infinity] }) : null;
+
   function tegnDispatch(el, serier, x) {
     var aktive = ENHEDER
       .filter(function (e) { return serier[e.key]; })
       .map(function (e) { return { def: e, vals: tal(serier[e.key]) }; })
       .filter(function (e) { return sum(e.vals) > 0.01; });
 
-    var data = [x];
+    var n = x.length;
+    // Kumulerede toppe i stak-rækkefølge (grundlast/VE nederst).
     var prev = null;
     aktive.forEach(function (e) {
-      var n = x.length, cum = new Float64Array(n);
+      var cum = new Float64Array(n);
       for (var j = 0; j < n; j++) cum[j] = (prev ? prev[j] : 0) + e.vals[j];
-      data.push(cum);
-      prev = cum;
+      e.top = cum; prev = cum;
     });
-    data.push(tal(serier[BEHOV_KEY]));
 
+    // Tegne-rækkefølge: top-først (omvendt af stakken), så nederste overmaler.
+    var tegn = aktive.slice().reverse();
+    var data = [x];
     var series = [{}];
-    aktive.forEach(function (e) {
+    tegn.forEach(function (e) {
+      data.push(e.top);
       series.push({
         label: e.def.navn,
         stroke: e.def.farve,
-        fill: rgba(e.def.farve, 0.5),
-        width: 1,
+        // OPAK fyld: søjlerne tegnes fra 0 og overmaler hinanden (paint-order-
+        // stak), så halvgennemsigtigt fyld ville lægge sig oven på sig selv og
+        // gøre bunden mørkere. Solidt fyld lader hver overmaling erstatte fuldt.
+        fill: e.def.farve,
+        width: 0,
+        paths: soejler || undefined,
         points: { show: false },
-        // Legendeværdi = enhedens EGEN MW (de-kumuleret), ikke stak-summen.
-        value: function (self, _v, si, di) {
-          if (di == null) return "–";
-          var egen = self.data[si][di] - (si > 1 ? self.data[si - 1][di] : 0);
-          return nf1.format(egen) + " MW";
-        },
+        // Legendeværdi = enhedens EGEN MW (egne vals, ikke stak-toppen).
+        value: (function (egne) {
+          return function (self, _v, _si, di) {
+            return di == null ? "–" : nf1.format(egne[di]) + " MW";
+          };
+        })(e.vals),
       });
     });
+    data.push(tal(serier[BEHOV_KEY]));
     series.push({
       label: "Varmebehov", stroke: "#1c1f23", width: 1.5, dash: [4, 3], fill: null,
       points: { show: false },
       value: function (self, v) { return v == null ? "–" : nf1.format(v) + " MW"; },
     });
 
-    var bands = [];
-    for (var m = 2; m <= aktive.length; m++) bands.push({ series: [m, m - 1] });
-
     var opts = basisOpts(el, 340, "MW", true);
     opts.title = "Varmeproduktion pr. enhed (dispatch)";
     opts.series = series;
-    opts.bands = bands;
     tilfoej(opts, data, el);
   }
 
