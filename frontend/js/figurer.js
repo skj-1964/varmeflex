@@ -85,10 +85,99 @@
   var instanser = [];     // [{u, el}] — alle figurer
   var tFuld = null;       // [min, max] sekunder for hele perioden
   var laasSync = false;   // reentrans-vagt ved skala-synkronisering
+  // Dispatch-figuren aggregerer søjlerne efter zoom-niveau. Vi gemmer rådata
+  // her, så setScale-hook'en kan ombucke (uge/dag/time) uden at tegne om.
+  var dispatch = null;    // {instans, x, aktive:[{def,vals}], behov, gran, egne, captionEl}
 
   function ryd() {
     instanser.forEach(function (o) { try { o.u.destroy(); } catch (e) {} });
     instanser = [];
+    dispatch = null;
+  }
+
+  // --- Dispatch-aggregering (middel-effekt pr. bucket) ---------------------
+  // Tærskler: helår-ish → uge; kvartal/måned → dag; under en uge → time.
+  // (Et kvartal ~91 dage skal vise DAGE, så uge-tærsklen ligger over kvartalet.)
+  var DAG_S = 86400, UGE_S = 7 * DAG_S;
+  function vaelgGran(span) {
+    if (span > 100 * DAG_S) return "uge";   // over ~3,3 mdr.
+    if (span >= UGE_S)      return "dag";    // 1 uge–3 mdr. (inkl. kvartaler)
+    return "time";
+  }
+  function dagStart(sek) {
+    var d = new Date(sek * 1000);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000;
+  }
+  function ugeStart(sek) {
+    var d = new Date(sek * 1000);
+    var ma = (d.getDay() + 6) % 7; // 0=mandag
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() - ma).getTime() / 1000;
+  }
+
+  // Byg uPlot-data for en granularitet. Returnerer {data, egne}: data =
+  // [x, top_topførst…, behov]; egne = {uPlot-serieindeks → enhedens egen
+  // middel-effekt} (til legendeværdier, da data kun bærer kumulerede toppe).
+  function byggDispatchData(gran) {
+    var units = dispatch.aktive, rx = dispatch.x, behov = dispatch.behov;
+    var xb, ownArrs, behovB;
+    if (gran === "time") {
+      xb = rx;
+      ownArrs = units.map(function (u) { return u.vals; });
+      behovB = behov;
+    } else {
+      var keyFn = gran === "uge" ? ugeStart : dagStart;
+      var off = (gran === "uge" ? UGE_S : DAG_S) / 2;   // bucket-CENTER → søjlen tiler pænt
+      var n = rx.length, idxOf = {}, keys = [], bidx = new Int32Array(n);
+      for (var i = 0; i < n; i++) {
+        var ks = keyFn(rx[i]); var bi = idxOf[ks];
+        if (bi === undefined) { bi = keys.length; idxOf[ks] = bi; keys.push(ks); }
+        bidx[i] = bi;
+      }
+      var B = keys.length;
+      xb = new Float64Array(B);
+      for (var b = 0; b < B; b++) xb[b] = keys[b] + off;
+      var cnt = new Float64Array(B);
+      for (var i2 = 0; i2 < n; i2++) cnt[bidx[i2]]++;
+      var middel = function (vals) {
+        var s = new Float64Array(B);
+        for (var i3 = 0; i3 < n; i3++) s[bidx[i3]] += vals[i3];
+        for (var b2 = 0; b2 < B; b2++) s[b2] = cnt[b2] ? s[b2] / cnt[b2] : 0;
+        return s;
+      };
+      ownArrs = units.map(function (u) { return middel(u.vals); });
+      behovB = middel(behov);
+    }
+    // Kumulerede toppe i stak-rækkefølge (bund-først), derefter top-først til paint-order.
+    var L = xb.length, prev = null, tops = [];
+    ownArrs.forEach(function (own) {
+      var c = new Float64Array(L);
+      for (var j = 0; j < L; j++) c[j] = (prev ? prev[j] : 0) + own[j];
+      tops.push(c); prev = c;
+    });
+    var data = [xb], egne = {};
+    for (var k = tops.length - 1; k >= 0; k--) { data.push(tops[k]); egne[data.length - 1] = ownArrs[k]; }
+    data.push(behovB);
+    return { data: data, egne: egne };
+  }
+
+  function granTekst(gran) {
+    var hvad = gran === "uge" ? "uge" : gran === "dag" ? "dag" : "time";
+    return "Søjler aggregeret pr. " + hvad + " (gennemsnitlig effekt). Zoom for finere opløsning.";
+  }
+
+  function opdaterDispatchAgg(t0, t1) {
+    if (!dispatch || !dispatch.instans) return;
+    var gran = vaelgGran(t1 - t0);
+    if (gran === dispatch.gran) return;     // uændret granularitet → intet at gøre
+    dispatch.gran = gran;
+    var r = byggDispatchData(gran);
+    dispatch.egne = r.egne;
+    var u = dispatch.instans, xmin = u.scales.x.min, xmax = u.scales.x.max;
+    laasSync = true;
+    u.setData(r.data);                       // nulstiller skalaer (y fitter hele)…
+    u.setScale("x", { min: xmin, max: xmax }); // …gendan zoom; y re-fitter det synlige
+    laasSync = false;
+    if (dispatch.captionEl) dispatch.captionEl.textContent = granTekst(gran);
   }
 
   // Dansk dato-akse.
@@ -113,6 +202,7 @@
         instanser.forEach(function (o) { if (o.u !== u) o.u.setScale("x", { min: sc.min, max: sc.max }); });
         opdaterInputs(sc.min, sc.max);
         laasSync = false;
+        opdaterDispatchAgg(sc.min, sc.max);  // ombuk dispatch-søjlerne til nyt zoom-niveau
       }] },
       axes: [
         { values: aksedatoer, grid: { stroke: "#ededea" }, ticks: { stroke: "#d8d8d4" }, stroke: "#5b6168" },
@@ -128,13 +218,13 @@
 
   function tilfoej(opts, data, el) { instanser.push({ u: new global.uPlot(opts, data, el), el: el }); }
 
-  // --- Dispatch: stakkede søjler + behovslinje -----------------------------
-  // Søjle-stak uden bands: hver enheds serie er den KUMULEREDE top (egen + alt
-  // under den), tegnet som søjle fra 0. Serierne lægges TOP-først, så den nederste
-  // enhed tegnes sidst og overmaler den lave del af de højere søjler — resultatet
-  // er en korrekt stak, uafhængigt af uPlots band-opførsel med søjle-paths.
-  // Søjle-bredden (size 0.9) er ~fuld ved helår (8.759 timer smelter til en
-  // profil) og bliver til adskilte søjler, når man zoomer ind på dage/uger.
+  // --- Dispatch: stakkede søjler (adaptiv aggregering) + behovslinje --------
+  // Søjle-stak uden bands: hver enheds serie er den KUMULEREDE top, tegnet som
+  // søjle fra 0. Serierne lægges TOP-først, så den nederste enhed tegnes sidst
+  // og overmaler den lave del af de højere søjler (paint-order-stak) — korrekt
+  // uafhængigt af uPlots band-opførsel med søjle-paths.
+  // Søjlerne aggregeres efter zoom-niveau (uge/dag/time, se opdaterDispatchAgg),
+  // så bredden altid passer skalaen. size 0.9 → brede søjler ved få buckets.
   var soejler = (global.uPlot.paths && global.uPlot.paths.bars)
     ? global.uPlot.paths.bars({ size: [0.9, Infinity] }) : null;
 
@@ -144,40 +234,35 @@
       .map(function (e) { return { def: e, vals: tal(serier[e.key]) }; })
       .filter(function (e) { return sum(e.vals) > 0.01; });
 
-    var n = x.length;
-    // Kumulerede toppe i stak-rækkefølge (grundlast/VE nederst).
-    var prev = null;
-    aktive.forEach(function (e) {
-      var cum = new Float64Array(n);
-      for (var j = 0; j < n; j++) cum[j] = (prev ? prev[j] : 0) + e.vals[j];
-      e.top = cum; prev = cum;
-    });
+    // Dispatch-tilstand: rådata til ombucketing ved zoom.
+    dispatch = { instans: null, x: x, aktive: aktive, behov: tal(serier[BEHOV_KEY]),
+                 gran: vaelgGran(tFuld[1] - tFuld[0]), egne: null, captionEl: null };
+    var r = byggDispatchData(dispatch.gran);
+    dispatch.egne = r.egne;
 
-    // Tegne-rækkefølge: top-først (omvendt af stakken), så nederste overmaler.
-    var tegn = aktive.slice().reverse();
-    var data = [x];
+    // Serier (top-først, så de matcher data fra byggDispatchData). Legendeværdi
+    // læses fra dispatch.egne[si], der opdateres ved hver ombucketing.
+    var rev = aktive.slice().reverse();
     var series = [{}];
-    tegn.forEach(function (e) {
-      data.push(e.top);
+    rev.forEach(function (e, ri) {
+      var si = ri + 1;
       series.push({
         label: e.def.navn,
         stroke: e.def.farve,
-        // OPAK fyld: søjlerne tegnes fra 0 og overmaler hinanden (paint-order-
-        // stak), så halvgennemsigtigt fyld ville lægge sig oven på sig selv og
-        // gøre bunden mørkere. Solidt fyld lader hver overmaling erstatte fuldt.
+        // OPAK fyld: paint-order-stakken overmaler, så halvgennemsigtigt fyld
+        // ville lægge sig oven på sig selv og gøre bunden mørkere.
         fill: e.def.farve,
         width: 0,
         paths: soejler || undefined,
         points: { show: false },
-        // Legendeværdi = enhedens EGEN MW (egne vals, ikke stak-toppen).
-        value: (function (egne) {
+        value: (function (idx) {
           return function (self, _v, _si, di) {
-            return di == null ? "–" : nf1.format(egne[di]) + " MW";
+            var a = dispatch.egne && dispatch.egne[idx];
+            return (di == null || !a) ? "–" : nf1.format(a[di]) + " MW";
           };
-        })(e.vals),
+        })(si),
       });
     });
-    data.push(tal(serier[BEHOV_KEY]));
     series.push({
       label: "Varmebehov", stroke: "#1c1f23", width: 1.5, dash: [4, 3], fill: null,
       points: { show: false },
@@ -187,7 +272,19 @@
     var opts = basisOpts(el, 340, "MW", true);
     opts.title = "Varmeproduktion pr. enhed (dispatch)";
     opts.series = series;
-    tilfoej(opts, data, el);
+    var u = new global.uPlot(opts, r.data, el);
+    instanser.push({ u: u, el: el });
+    dispatch.instans = u;
+    // Aggregerede buckets har et lidt smallere x-spænd end råtimerne; lås x til
+    // hele perioden, så dispatch er synkron med de øvrige (time-)figurer fra start.
+    laasSync = true;
+    u.setScale("x", { min: tFuld[0], max: tFuld[1] });
+    laasSync = false;
+    // Lille caption der fortæller den aktuelle aggregering (opdateres ved zoom).
+    el.insertAdjacentHTML("beforeend",
+      '<p style="margin:2px 2px 0;font-size:12px;font-style:italic;color:var(--tekst-mat)">' +
+      granTekst(dispatch.gran) + "</p>");
+    dispatch.captionEl = el.lastElementChild;
   }
 
   // --- Tankniveau: linje (eller pæn besked uden tank) ----------------------
@@ -295,6 +392,7 @@
     instanser.forEach(function (o) { o.u.setScale("x", { min: t0, max: t1 }); });
     laasSync = false;
     opdaterInputs(t0, t1);
+    opdaterDispatchAgg(t0, t1);  // ombuk dispatch-søjlerne til nyt zoom-niveau
   }
 
   function opdaterInputs(t0, t1) {
