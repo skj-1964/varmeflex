@@ -17,9 +17,13 @@ fjernvarmeværker. Troværdighed og sporbarhed vejer tungere end effekt.
   er FORSKELLEN mellem to parrede kørsler (fx C−A for balancemarkedet,
   A−B for tanken), ikke et absolut tal. Beregn forskellen ved at kalde
   `run_scenario` to gange og trække nøgletal fra hinanden.
-- Perfekt forudsigelse er en ØVRE GRÆNSE, ikke en prognose. Når du
-  kommunikerer balanceindtægt fra en perfekt-forudseende kørsel, så nævn
-  det, og at en foresight-haircut (~15%) er den realistiske justering.
+- Perfekt forudsigelse er en ØVRE GRÆNSE, ikke en prognose — det gælder ALLE
+  resultater, og kommunikeres altid sådan. Foresight-haircut'et (~15 %) er
+  derimod IKKE en generel justering: det gælder UDELUKKENDE balanceindtægt og
+  må ikke overføres til tankværdien. Når du kommunikerer balanceindtægt fra en
+  perfekt-forudseende kørsel, så nævn haircut'et; til tankværdien gør du ikke.
+  Den fulde behandling står i afsnittet "Foresight-haircut: gælder
+  balanceindtægt, ikke tankværdi".
 
 ## Balanceindtægt er under validering — ikke gyldige tal
 
@@ -45,6 +49,33 @@ Regler:
 Rent og præsentabelt (ikke ramt af fejlen): tankværdien A − B, de fysiske
 figurer (dispatch, tankniveau, varmebehov) og markedspriserne (spot,
 balance-kapacitetspriser).
+
+## Foresight-haircut: gælder balanceindtægt, ikke tankværdi
+
+Modellen kører med perfekt forudsigelse. Det er en øvre grænse, ikke en
+prognose — alle resultater kommunikeres sådan.
+
+Det anbefalede ~15 % foresight-haircut gælder udelukkende balanceindtægt.
+Det er kalibreret til netop den størrelse: afstanden mellem perfekt-
+forudseende og realiserbar indtjening på balancemarkedet, hvor budafgivelse
+og aktivering er stærkt afhængig af at ramme de rigtige timer.
+
+Tankværdien (A − B) må ikke haircuttes med de 15 %. Den stammer fra en anden
+mekanisme — lastforskydning mod spotprisen og det at gøre billige enheder
+kørbare på de rette timer — og en stor del af den er prognose-robust (det
+kræver ikke perfekt forudsigelse at vide, at det er billigere at lagre varme
+produceret i lavprisperioder). At overføre balance-tallet til tanken er at
+låne et nedslag fra den forkerte fordeling og er ikke sporbart.
+
+Derfor: præsentér tankværdien som en ren perfekt-forudsigelses-øvre-grænse
+(fx ~6,0 mio. DKK/år for Billund A − B), med øvre-grænse-forbeholdet sagt
+kvalitativt. Træk ikke 15 % fra. Et tank-specifikt haircut ville kræve et
+imperfekt-foresight-kør (rullende horisont), som ikke findes endnu; indtil
+det gør, opfindes intet nedslag.
+
+Forveksl aldrig de to: foresight-haircut'et hører til balanceindtægt;
+tankværdien står som øvre grænse. Dette er adskilt fra "balance under
+validering"-forbeholdet (modelfejl), som gælder selve balance-kronerne.
 
 ## Fortegn: objektiv_dkk er en omkostning
 
