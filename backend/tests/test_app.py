@@ -142,4 +142,25 @@ kæmpe_svar = {"role": "assistant", "content": "z" * (backend.MAX_SVAR_TEGN + 1)
 r = cc.post("/api/chat", json={"beskeder": [kort_spm, kæmpe_svar, kort_spm]})
 vis("assistent-svar over svarloft -> 413", r.status_code == 413)
 
+print("\n=== Modelkonfiguration (env -> modul-konstant) ===")
+# Ren konfigurationstest: intet API-kald. Konstanterne læses ved modulindlæsning,
+# så env-overstyring testes via importlib.reload.
+import importlib
+
+# Uden env (intet sat i testmiljøet) -> defaults gælder, adfærd uændret.
+vis("chat-model falder tilbage til default", backend.MODEL == "claude-sonnet-4-6")
+vis("filter-model falder tilbage til default", backend.RELEVANS_MODEL == "claude-haiku-4-5-20251001")
+
+# Med env sat -> konstanterne tager env-værdien ved (gen)indlæsning.
+os.environ["VARMEFLEX_CHAT_MODEL"] = "test-chat-model"
+os.environ["VARMEFLEX_FILTER_MODEL"] = "test-filter-model"
+importlib.reload(backend)
+vis("chat-model tager env-værdi", backend.MODEL == "test-chat-model")
+vis("filter-model tager env-værdi", backend.RELEVANS_MODEL == "test-filter-model")
+
+# Ryd op og genindlæs, så modultilstanden er uændret for evt. senere brug.
+del os.environ["VARMEFLEX_CHAT_MODEL"]
+del os.environ["VARMEFLEX_FILTER_MODEL"]
+importlib.reload(backend)
+
 print("\nAlle tests bestået.")

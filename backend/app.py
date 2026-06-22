@@ -26,7 +26,8 @@ Miljøvariabler (sættes i drift, fx i systemd-unit'en):
   MODEL_OUTPUT_DIR    sti til modellens output/ (default ../output)
   VARMEFLEX_KODER      komma-separerede gyldige medlemskoder
   VARMEFLEX_SECRET     hemmelighed til at signere cookies (sæt en lang streng)
-  VARMEFLEX_MODEL      Anthropic-modelstreng (default claude-sonnet-4-6)
+  VARMEFLEX_CHAT_MODEL    Anthropic-model til hovedchatten (default claude-sonnet-4-6)
+  VARMEFLEX_FILTER_MODEL  Anthropic-model til relevansfilteret (default claude-haiku-4-5-20251001)
   VARMEFLEX_SESSION_TIMER_PR_TIME   maks chat-kald pr. session pr. time (default 30)
   VARMEFLEX_GLOBALT_DAGSLOFT        maks chat-kald i alt pr. dag (default 500)
 """
@@ -55,7 +56,7 @@ import scenarios
 OUTPUT_DIR = Path(os.environ.get("MODEL_OUTPUT_DIR", str(Path(__file__).parent / "output_demo")))
 KODER = {k.strip() for k in os.environ.get("VARMEFLEX_KODER", "demo").split(",") if k.strip()}
 SECRET = os.environ.get("VARMEFLEX_SECRET", "skift-mig-i-drift")
-MODEL = os.environ.get("VARMEFLEX_MODEL", "claude-sonnet-4-6")
+MODEL = os.environ.get("VARMEFLEX_CHAT_MODEL", "claude-sonnet-4-6")
 SESSION_MAX_ALDER_S = 12 * 3600  # cookie gyldig 12 timer
 # Secure-flag på cookien kræver HTTPS. Slå fra ved lokal HTTP-udvikling.
 COOKIE_SECURE = os.environ.get("VARMEFLEX_COOKIE_SECURE", "1") == "1"
@@ -70,10 +71,14 @@ MAX_BESKEDER = int(os.environ.get("VARMEFLEX_MAX_BESKEDER", "40"))
 
 # Relevans-tjek: billigt JA/NEJ med en lille model, FØR det dyre kald.
 RELEVANSTJEK = os.environ.get("VARMEFLEX_RELEVANSTJEK", "1") == "1"
-RELEVANS_MODEL = os.environ.get("VARMEFLEX_RELEVANS_MODEL", "claude-haiku-4-5-20251001")
+RELEVANS_MODEL = os.environ.get("VARMEFLEX_FILTER_MODEL", "claude-haiku-4-5-20251001")
 AFVISNING = ("Jeg kan kun hjælpe med spørgsmål om dispatchmodellen og "
              "Billund-casen — fx værdien af balancemarkedet eller tanken, "
              "eller hvordan et scenarie ser ud.")
+
+# Synliggør de valgte modeller i journalctl ved opstart. Env sættes af systemd
+# ved opstart; en genstart er den rette måde at skifte model på (ikke pr. request).
+print(f"varmeflex: chat-model={MODEL} filter-model={RELEVANS_MODEL}", flush=True)
 
 GROUNDING = (Path(__file__).parent / "grounding_da.md").read_text(encoding="utf-8")
 COOKIE_NAVN = "varmeflex_session"
