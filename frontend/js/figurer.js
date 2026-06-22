@@ -34,6 +34,8 @@
   var SPOT_KEY = "spot_price_dkk_mwh";
   var AFRR_CAP_KEY = "afrr_cap_up_dkk_mw_h";
   var MFRR_CAP_KEY = "mfrr_cap_up_dkk_mw_h";
+  var AFRR_ACT_KEY = "afrr_act_up_dkk_mwh";
+  var MFRR_ACT_KEY = "mfrr_act_up_dkk_mwh";
 
   // --- Talformat (da-DK, tabulær i tooltips via CSS) -----------------------
   var nf1 = new Intl.NumberFormat("da-DK", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -48,6 +50,14 @@
   function tal(arr) {
     var n = arr ? arr.length : 0, ud = new Float64Array(n);
     for (var i = 0; i < n; i++) { var v = parseFloat(arr[i]); ud[i] = isFinite(v) ? v : 0; }
+    return ud;
+  }
+  // Positiv-kun variant til log-skala: værdier ≤ 0 (eller ikke-endelige) → null,
+  // så linjen får et HUL i timer uden (positiv) aktivering frem for at vælte
+  // log-skalaen. Bruger almindelig Array (ikke Float64Array), da null skal bevares.
+  function talPositiv(arr) {
+    var n = arr ? arr.length : 0, ud = new Array(n);
+    for (var i = 0; i < n; i++) { var v = parseFloat(arr[i]); ud[i] = (isFinite(v) && v > 0) ? v : null; }
     return ud;
   }
   function tidssekunder(ts) {
@@ -222,6 +232,49 @@
     tilfoej(opts, [x, tal(serier[AFRR_CAP_KEY]), tal(serier[MFRR_CAP_KEY])], el);
   }
 
+  // --- Balancepriser (aktivering, aFRR/mFRR) på log-skala — kun balancemarked
+  // Aktiveringsprisen spænder fra ~10 til titusinder kr./MWh; log-aksen med faste
+  // dekade-ticks (10–100.000) gør både det normale bånd og spidserne læselige.
+  // Timer uden positiv aktivering (0 eller de få negative ned-pris-timer) bliver
+  // huller — log-skalaen kan ikke vise ≤ 0. Figurteksten siger det ærligt.
+  function tegnAktivering(el, serier, x) {
+    var harA = !!serier[AFRR_ACT_KEY], harM = !!serier[MFRR_ACT_KEY];
+    if (!harA && !harM) {
+      el.innerHTML = '<p class="fig-tom">Ingen balancemarked i dette scenarie.</p>';
+      return;
+    }
+    var opts = basisOpts(el, 220, "kr./MWh", false);
+    opts.title = "Balancepriser — aktivering (aFRR/mFRR), log-skala";
+    // Log-skala med fast bund (10) og top mindst 100.000, så dekaderne er stabile
+    // også ved zoom; ≤ 0 er allerede filtreret til null af talPositiv.
+    opts.scales = {
+      y: { distr: 3, log: 10, range: function (u, _min, max) { return [10, Math.max(100000, max * 1.1)]; } },
+    };
+    // Faste dekade-ticks; nf0-formatering arves fra basisOpts (→ "100.000").
+    opts.axes[1].splits = function () { return [10, 100, 1000, 10000, 100000]; };
+
+    var series = [{}], data = [x];
+    if (harA) {
+      series.push({ label: "aFRR aktivering", stroke: "#2f6f5e", width: 1, points: { show: false },
+        value: prisVaerdi("kr./MWh") });
+      data.push(talPositiv(serier[AFRR_ACT_KEY]));
+    }
+    if (harM) {
+      series.push({ label: "mFRR aktivering", stroke: "#b5694e", width: 1, points: { show: false },
+        value: prisVaerdi("kr./MWh") });
+      data.push(talPositiv(serier[MFRR_ACT_KEY]));
+    }
+    opts.series = series;
+    tilfoej(opts, data, el);
+
+    // Figurtekst (ærlig om hullerne) — inline-stylet, ingen ny CSS.
+    el.insertAdjacentHTML("beforeend",
+      '<p style="margin:2px 2px 0;font-size:12px;font-style:italic;color:var(--tekst-mat)">' +
+      "Log-skala. Kun timer med positiv op-aktivering vises; timer uden aktivering " +
+      "(og de få timer med negativ pris) fremstår som huller, da log-skalaen ikke " +
+      "kan vise nul eller negative værdier.</p>");
+  }
+
   // --- Periodevælger -------------------------------------------------------
   function saetPeriode(t0, t1) {
     if (!(t1 > t0)) return;
@@ -289,6 +342,7 @@
     var elT = document.getElementById("fig-tank");
     var elS = document.getElementById("fig-spot");
     var elB = document.getElementById("fig-balance");
+    var elA = document.getElementById("fig-aktivering");
     if (!serier || !serier.timestamp || !elD) {
       if (elP) elP.innerHTML = "";
       if (elD) elD.innerHTML = '<p class="fig-tom">Ingen timeserier i dette manifest.</p>';
@@ -300,6 +354,7 @@
     if (elT) tegnTank(elT, serier, x);
     if (elS) tegnSpot(elS, serier, x);
     if (elB) tegnBalance(elB, serier, x);
+    if (elA) tegnAktivering(elA, serier, x);
     monterPeriodevaelger();
   }
 

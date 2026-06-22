@@ -241,6 +241,7 @@
     h += '<div id="fig-tank" class="fig"></div>';
     h += '<div id="fig-spot" class="fig"></div>';
     h += '<div id="fig-balance" class="fig"></div>';
+    h += '<div id="fig-aktivering" class="fig"></div>';
     h += "</div>";
 
     elDetalje.innerHTML = h;
@@ -401,6 +402,7 @@
     h += '<div id="fig-tank" class="fig"></div>';
     h += '<div id="fig-spot" class="fig"></div>';
     h += '<div id="fig-balance" class="fig"></div>';
+    h += '<div id="fig-aktivering" class="fig"></div>';
     h += "</div>";
 
     elDetalje.innerHTML = h;
