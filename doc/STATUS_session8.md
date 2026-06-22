@@ -13,7 +13,7 @@ Figurerne er udvidet og forbedret. Aktiveringsprisen kan nu vises på log-skala
 (spidser op mod ~36.000 kr./MWh bliver læselige), og dispatch-figuren er gået
 fra stakket areal til stakkede søjler, der aggregeres efter zoom-niveau, så
 søjlebredden altid passer skalaen. Under en uge får x-aksen klokkeslæt.
-Det ene udestående er **browser-verifikation** — se nedenfor.
+Alt er **browser-verificeret af bruger** — ingen åbne website-figurpunkter tilbage.
 
 ## Beslutninger truffet (alle bruger-besluttede)
 - **Aktiveringspris-figur (ny):** aFRR/mFRR aktiveringspris (DKK/MWh) på
@@ -72,32 +72,27 @@ Det ene udestående er **browser-verifikation** — se nedenfor.
   aFRR min −176 / max 20.909 (6.769 > 0, 34 < 0); mFRR min −285 / max 36.010
   (7.002 > 0, 224 < 0). `talPositiv` + range `[10, 100000]` simuleret på
   rådata: alle dekade-ticks i range, spidser inden for 100.000.
-- **Statisk:** brace/paren-balance OK; symboler i scope. **Intet JS-runtime
-  eller browser i miljøet** → kunne ikke køre koden.
-- **UDESTÅR: browser-verifikation** (åbent punkt 1 nedenfor). Ingen backend-/
-  test-ændring, så testsuiten er urørt og fortsat grøn.
+- **Statisk:** brace/paren-balance OK; symboler i scope. (Intet JS-runtime
+  eller browser i miljøet → koden kunne ikke køres af Claude Code.)
+- **Browser-verificeret af bruger:** de fire figur-ændringer bekræftet OK i
+  rigtig browser (aktivering på log/C, dispatch-søjler med aggregering
+  uge/dag/time, x-akse-klokkeslæt under en uge). Ingen backend-/test-ændring,
+  så testsuiten er urørt og fortsat grøn.
 
 ## Åbne punkter
-1. **Browser-verifikation af figurerne (NY, vigtigst):** bekræft i rigtig
-   browser, logget ind på C-scenariet:
-   - Aktivering: dekade-ticks 10–100.000, spidser læselige, kun på C, A/B
-     tom-besked, zoomer med, figurtekst om huller.
-   - Dispatch: helår → uge-søjler; kvartal → dag-søjler; < 1 uge → time-søjler;
-     korrekt stak-rækkefølge/farver, behovslinje ovenpå, y-akse i MW hele vejen,
-     caption skifter, alle figurer zoom-synkrone.
-   - x-akse: under en uge vises `mm-dd hh:00` skråt (-45°) uden overlap.
-   Justeringer afventer dette (fx -90° i stedet for -45°, søjlebredde,
-   farve/format).
-2. **Balance-modelfejl** (fra session 1, uændret) — model-bane, uden for
+1. **Balance-modelfejl** (fra session 1, uændret) — model-bane, uden for
    website-sporet; skal fixes før balance-indtægt præsenteres som resultat.
-3. **Fra tidligere, stadig uafklaret:** hvilke scenarier ud over A/B/C i cachen
+2. **Fra tidligere, stadig uafklaret:** hvilke scenarier ud over A/B/C i cachen
    (pris-akse via `--set`); video-omfang; `[BEKRÆFT]`-værdier i
    `billund_2025.yaml`.
 
+## Lukket denne session
+- **Figur-arbejde (aktivering/log, dispatch-søjler, adaptiv aggregering,
+  x-akse-klokkeslæt):** bygget, pushet og **browser-verificeret af bruger**.
+  LUKKET.
+
 ## Næste skridt
-1. **Bruger browser-tjek** af de fire figur-ændringer → luk åbent punkt 1, ret
-   evt. detaljer.
-2. **Model-bane:** balance-indtægt-fejlen.
+1. **Model-bane:** balance-indtægt-fejlen (åbent punkt 1).
 
 ## Kommandoer til reference
 ```bash
