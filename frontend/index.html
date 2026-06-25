@@ -15,31 +15,25 @@
         <span class="brand__navn">varmeflex<span class="brand__dot">.dk</span></span>
         <span class="brand__under">MILP-dispatchmodel for dansk fjernvarme · pilotcase Billund</span>
       </div>
+
+      <!-- Adgang for medlemmer: intro + login bor nu i topbjælken; vises kun uden session. -->
+      <div id="login-omraade" class="topbar__login-omraade" hidden>
+        <p class="topbar__intro">
+          Forbeholdt fjernvarmeværker og Dansk Fjernvarmes medlemmer.
+          Indtast din medlemskode for at se modellen.
+        </p>
+        <form id="login-form" class="topbar__login" autocomplete="off">
+          <input id="login-kode" class="felt__input felt__input--top" type="password"
+                 name="kode" required placeholder="Medlemskode" aria-label="Medlemskode"
+                 autocapitalize="off" spellcheck="false" autocomplete="off">
+          <button id="login-knap" class="knap knap--primaer" type="submit">Log ind</button>
+        </form>
+        <p id="login-fejl" class="fejl fejl--top" role="alert" hidden></p>
+      </div>
     </div>
   </header>
 
   <main class="indhold">
-
-    <!-- ===================== LOGIN-VIEW ===================== -->
-    <section id="login-view" class="view login" hidden>
-      <div class="kort kort--login">
-        <h1 class="login__titel">Adgang for medlemmer</h1>
-        <p class="login__intro">
-          Siden er forbeholdt fjernvarmeværker og Dansk Fjernvarmes medlemmer.
-          Indtast din medlemskode for at se modellen.
-        </p>
-        <form id="login-form" autocomplete="off">
-          <label class="felt">
-            <span class="felt__navn">Medlemskode</span>
-            <input id="login-kode" class="felt__input" type="password"
-                   name="kode" required autocapitalize="off"
-                   spellcheck="false" autocomplete="off">
-          </label>
-          <p id="login-fejl" class="fejl" role="alert" hidden></p>
-          <button id="login-knap" class="knap knap--primaer" type="submit">Log ind</button>
-        </form>
-      </div>
-    </section>
 
     <!-- ===================== APP-VIEW ===================== -->
     <section id="app-view" class="view app" hidden>
@@ -104,6 +98,7 @@
 
   <script src="vendor/uPlot.iife.min.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/markdown.js"></script>
   <script src="js/figurer.js"></script>
   <script src="js/app.js"></script>
 </body>

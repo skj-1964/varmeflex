@@ -62,6 +62,27 @@ h1, h2, h3 { font-weight: 600; line-height: 1.25; margin: 0; }
 .brand__dot { color: var(--accent); }
 .brand__under { font-size: 12.5px; color: var(--tekst-svag); }
 
+/* Adgang for medlemmer i topbjælken — intro + felt/knap + evt. fejl, højrestillet */
+.topbar__login-omraade {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+  max-width: 420px;
+}
+.topbar__intro {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--tekst-svag);
+  text-align: right;
+}
+.topbar__login { display: flex; align-items: center; gap: 8px; }
+.felt__input--top { width: 200px; padding: 7px 11px; }
+.topbar__login .knap--primaer { padding: 7px 20px; white-space: nowrap; }
+/* Kompakt fejl, så topbjælken ikke hopper for meget */
+.fejl--top { margin: 0; padding: 6px 10px; font-size: 12.5px; }
+
 /* ---------------- Layout ---------------- */
 .indhold { max-width: 1180px; margin: 0 auto; padding: 28px 24px 56px; }
 .view { display: block; }
@@ -94,17 +115,7 @@ h1, h2, h3 { font-weight: 600; line-height: 1.25; margin: 0; }
 }
 .knap--diskret:hover { border-color: var(--tekst-mat); color: var(--tekst); }
 
-/* ---------------- Login ---------------- */
-.login { display: flex; justify-content: center; padding-top: 32px; }
-.kort {
-  background: var(--flade);
-  border: 1px solid var(--kant);
-  border-radius: var(--radius);
-}
-.kort--login { width: 100%; max-width: 420px; padding: 28px 28px 30px; }
-.login__titel { font-size: 19px; margin-bottom: 8px; }
-.login__intro { color: var(--tekst-svag); font-size: 14px; margin: 0 0 20px; }
-
+/* ---------------- Felter ---------------- */
 .felt { display: block; margin-bottom: 16px; }
 .felt__navn {
   display: block;
@@ -136,8 +147,6 @@ h1, h2, h3 { font-weight: 600; line-height: 1.25; margin: 0; }
   border: 1px solid #e7c4c4;
   border-radius: var(--radius);
 }
-.login__titel + .login__intro { margin-top: 0; }
-.login form .knap--primaer { width: 100%; }
 
 /* ---------------- App-grid ---------------- */
 .app__grid {
@@ -324,6 +333,61 @@ h1, h2, h3 { font-weight: 600; line-height: 1.25; margin: 0; }
 }
 .boble--pending { align-self: flex-start; color: var(--tekst-mat); font-style: italic; }
 
+/* Markdown-renderet assistent-boble: normal whitespace (blok-tags styrer selv
+   afstanden) og stramme marginer, så svaret ikke "falder fra hinanden". */
+.boble--md { white-space: normal; }
+.boble--md > :first-child { margin-top: 0; }
+.boble--md > :last-child { margin-bottom: 0; }
+.boble--md p { margin: 0 0 8px; }
+.boble--md h1, .boble--md h2, .boble--md h3,
+.boble--md h4, .boble--md h5, .boble--md h6 {
+  font-size: 14px;
+  margin: 12px 0 6px;
+}
+.boble--md ul, .boble--md ol { margin: 0 0 8px; padding-left: 20px; }
+.boble--md li { margin: 2px 0; }
+.boble--md li > p { margin: 0; }
+.boble--md a { color: var(--accent); text-decoration: underline; }
+.boble--md code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: var(--flade);
+  border: 1px solid var(--kant);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.boble--md pre {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  background: var(--flade);
+  border: 1px solid var(--kant);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+.boble--md pre code {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 12.5px;
+  white-space: pre;
+}
+.boble--md blockquote {
+  margin: 0 0 8px;
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid var(--kant);
+  color: var(--tekst-svag);
+}
+.boble--md strong { font-weight: 600; }
+.boble--md .md-tabel-rul { overflow-x: auto; margin: 0 0 8px; }
+.boble--md .md-tabel { border-collapse: collapse; font-size: 13px; }
+.boble--md .md-tabel th, .boble--md .md-tabel td {
+  border: 1px solid var(--kant);
+  padding: 5px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+.boble--md .md-tabel th { background: var(--flade-2); font-weight: 600; }
+
 /* Inline-referencer under et assistent-svar */
 .chat__ref {
   align-self: flex-start;
@@ -508,4 +572,13 @@ h1, h2, h3 { font-weight: 600; line-height: 1.25; margin: 0; }
 @media (max-width: 820px) {
   .app__grid { grid-template-columns: 1fr; }
   .kpi--bred { grid-column: span 1; }
+}
+
+/* Smalle skærme: lad login-området falde under brandet i stedet for at flyde ud */
+@media (max-width: 560px) {
+  .topbar__inner { flex-wrap: wrap; }
+  .topbar__login-omraade { width: 100%; max-width: none; align-items: stretch; }
+  .topbar__intro { text-align: left; }
+  .topbar__login { width: 100%; }
+  .felt__input--top { flex: 1; width: auto; }
 }

@@ -1,9 +1,9 @@
 /* app.js — UI-laget for varmeflex.dk (increment 1).
  *
- * Én side, to views skiftet af auth-tilstand: login-view og app-view.
- * Ved load forsøges scenarie-kataloget hentet; lykkes det, er sessionen
- * gyldig (cookien er HttpOnly og kan ikke læses fra JS) → app-view. Et 401
- * (AuthFejl) → login-view.
+ * Én side skiftet af auth-tilstand: login-området ligger i topbjælken
+ * (#login-omraade), app-indholdet i #app-view. Ved load forsøges scenarie-
+ * kataloget hentet; lykkes det, er sessionen gyldig (cookien er HttpOnly og kan
+ * ikke læses fra JS) → app-view. Et 401 (AuthFejl) → vis login-området.
  *
  * Increment 1: stillads + login-gate + scenarie-menu + manifest-detalje.
  * Increment 2: figurer (i figurer.js), kaldt fra detaljepanelet.
@@ -16,7 +16,7 @@
   var API = window.VarmeflexAPI;
 
   // --- DOM-referencer ------------------------------------------------------
-  var elLoginView = document.getElementById("login-view");
+  var elLoginOmraade = document.getElementById("login-omraade");
   var elAppView   = document.getElementById("app-view");
   var elLoginForm = document.getElementById("login-form");
   var elLoginKode = document.getElementById("login-kode");
@@ -74,11 +74,11 @@
   // --- View-skift ----------------------------------------------------------
   function visLogin() {
     elAppView.hidden = true;
-    elLoginView.hidden = false;
+    elLoginOmraade.hidden = false;   // intro + login bor nu i topbjælken
     elLoginKode.focus();
   }
   function visApp() {
-    elLoginView.hidden = true;
+    elLoginOmraade.hidden = true;
     elAppView.hidden = false;
   }
 
@@ -476,10 +476,19 @@
   }
 
   // --- Chat ----------------------------------------------------------------
-  function boble(klasse, tekst) {
+  // somMarkdown=true bruges KUN til assistent-svar: råteksten køres gennem den
+  // sikre renderer (markdown.js), som escaper alt og kun genskaber et kendt
+  // tag-subset. Alle andre bobler (bruger, fejl, pending) sættes som textContent
+  // — ingen HTML-injektion fra bruger-input eller fejlbeskeder.
+  function boble(klasse, tekst, somMarkdown) {
     var d = document.createElement("div");
     d.className = "boble " + klasse;
-    d.textContent = tekst;               // textContent: ingen HTML-injektion
+    if (somMarkdown && window.VarmeflexMarkdown) {
+      d.classList.add("boble--md");
+      d.innerHTML = window.VarmeflexMarkdown.tilHtml(tekst);
+    } else {
+      d.textContent = tekst;             // textContent: ingen HTML-injektion
+    }
     elChatLog.appendChild(d);
     elChatLog.scrollTop = elChatLog.scrollHeight;
     return d;
@@ -552,7 +561,7 @@
     API.chat(chatHistorik).then(function (res) {
       pending.remove();
       var svar = res.svar || "(tomt svar)";
-      boble("boble--assistent", svar);
+      boble("boble--assistent", svar, true);   // assistent-svar renderes som markdown
       chatHistorik.push({ role: "assistant", content: svar });
       visReferencer(res.manifester || []);
       chatLaast(false);
